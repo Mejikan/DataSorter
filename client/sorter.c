@@ -3,13 +3,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include "sorter.h"
 #include "sortFile.h"
+#include "sorter.h"
+
+
 	
 char *outputFile;
 pthread_mutex_t rec_lock;
@@ -21,6 +24,7 @@ int gNumOfRecs = 0;
 pthread_t* gTid;
 int gNumOfTids = 0;
 
+char* hostName = NULL;
 
 int main(int argc, char **argv){
 	// --- READ CMD ARGS INTO BUFFER --- //
@@ -28,6 +32,7 @@ int main(int argc, char **argv){
 	char* inputDir = NULL;
 	char* outputDir = NULL;
 	char* tarColName = NULL;
+
 
 	if(argc < 3){ // not enough args
 		printf("Not enough arguments please re-enter.\n");
@@ -44,9 +49,15 @@ int main(int argc, char **argv){
 		}else if(strcmp(argv[i], "-o") == 0){
 			outputDir = argv[i+1];
 			i++;
+		}else if(strcmp(argv[i], "-h") == 0){		//added
+			hostName = argv[i+1];
 		}
 		i++;
 	}
+
+	printf("host name: %s\n",hostName);
+
+	
 	
 	
 	if(inputDir == NULL){
@@ -154,6 +165,8 @@ int mergeDataLinear(Record** recs, int numOfRecs, int columnName){
 
 int recurseDir(recurseDirArgs *dirArgs){
 	
+
+
 	char *inputDir = dirArgs->inputDir;
 	char *outputDir = dirArgs->outputDir;
 	char *tarColName = dirArgs->tarColName;
@@ -174,28 +187,55 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	 
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
+
 	
 	if(sd < 0){
 		printf("Error, could not create socket\n");
 		exit(0);
 	}
 	
-	struct sockaddr_in address;
-	address.sin_family = AF_INET;
-	address.sin_port = htons(25565);
+	struct sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_port = htons(9002);
 	
-	//getaddirinfo
-	struct addrInfo* res;
-	int pass = getaddirinfo("www.google.com", NULL, NULL, &res);
-	if(pass != 0){
-		printf("ERROR, could not getaddirinfo\n");
-		exit(0);
+	//getaddrinfo
+
+	struct hostent *hp;
+	char buffer[1024];
+
+	hp = gethostbyname(hostName);
+
+	if(hp == 0){
+		perror("gethostbyname failed \n");
+		exit(1);
 	}
-	
-	if(connect(sd, (struct sockaddr *)&address, sizeof(address)) < 0){
+
+	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
+
+
+
+
+	/*struct addrInfo* res;
+	int pass = getaddrinfo("www.google.com", NULL, NULL, &res);
+	printf("pass: %d\n", pass);
+
+	if(pass){
+		printf("ERROR, could not getaddrinfo\n");
+		exit(0);
+	}*/
+
+
+	printf("before\n");
+	int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
+	printf("HERE \n");
+	printf("connectStatus: %d\n", connectStatus);
+		
+
+	if(connectStatus < 0){
 		printf("ERROR, connect faield\n");
 		exit(0);
 	}
+	printf("CONNECTED \n");
 	
 	
 	
@@ -411,6 +451,7 @@ void clientToServer(conServArgs* args){
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
+	printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
 	char* message = (char*)(malloc(strlen(data)+ strlen("<data>")+strlen("</data>") + strlen("<colName>")+strlen("</colName>") + strlen("<action>")+strlen("</action>")));
