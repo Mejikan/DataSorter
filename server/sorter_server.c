@@ -161,6 +161,8 @@ void runClient(ClientArgs *args){
                             collection->numOfRecs = numOfRecs;
                             collection->recs = parsedrecs;
                             pthread_mutex_unlock(collection->recsLock);
+                            // ~~~~WRITE COLLECTION ID TO CLIENT
+
                         } else { // find existing collection
                             if (findCollection(collectionId, &collection) < 0){
                                 puts("Cannot find requested collection.");
@@ -202,7 +204,7 @@ int main(int argc, char **argv){
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == 0){
-        puts("Failed to create socket.\n");
+        puts("Failed to create socket.");
         return -1;
     }
     if ( bind(serverSocket, (struct sockaddr *)&addr, addrlen) < 0 ){
