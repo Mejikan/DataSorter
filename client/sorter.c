@@ -196,7 +196,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(9002);
+	server.sin_port = htons(25566);
 	
 	//getaddrinfo
 
@@ -209,6 +209,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 		perror("gethostbyname failed \n");
 		exit(1);
 	}
+
 
 	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
 
@@ -225,17 +226,17 @@ int recurseDir(recurseDirArgs *dirArgs){
 	}*/
 
 
-	printf("before\n");
+
 	int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
-	printf("HERE \n");
-	printf("connectStatus: %d\n", connectStatus);
+	
+	//printf("connectStatus: %d\n", connectStatus);
 		
 
 	if(connectStatus < 0){
 		printf("ERROR, connect faield\n");
 		exit(0);
 	}
-	printf("CONNECTED \n");
+	//printf("CONNECTED \n");
 	
 	
 	
@@ -257,7 +258,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				conServArgs* args = (conServArgs*) malloc(sizeof(conServArgs));
 				args->dataToSort = inFileName;
 				args->colName = tarColName;
-				args->action = "post";
+				args->action = "sort";
 				args->socketDesc = sd;
 				
 				
@@ -419,8 +420,7 @@ char *readSTDIN(){
 	return content;
 }
 
-void printArray(Record** records, int len, FILE* fptr)
-{
+void printArray(Record** records, int len, FILE* fptr){
     int recIdx = 0;
 	while (recIdx < len){
 		Record *record = records[recIdx];
@@ -445,35 +445,77 @@ void printArray(Record** records, int len, FILE* fptr)
 	}
 }
 
+int readSocket(int socket, char **dataPtr){
+    char *delimTerm = "\r\n";
+
+    char *dataIn = (char*)malloc(1);
+    dataIn[0] = 0;
+    char buff[1024];
+    memset(&buff, 0, 1024);
+
+    while (1){
+        short bytes = recv(socket, buff, 1024, 0);
+        if (bytes < 0){
+            perror("Failed to read from client");
+            free(dataIn);
+            return -1;
+        } else if (bytes == 0){ //EOF (end of stream)
+            *dataPtr = dataIn;
+            return strlen(dataIn);
+        } else {
+            dataIn = (char*) realloc(dataIn, bytes + strlen(dataIn) + 1);
+            strcat(dataIn, buff);
+            if (strstr(dataIn, delimTerm) == (dataIn + bytes - strlen(delimTerm))){
+                *dataPtr = dataIn;
+                dataPtr[bytes - strlen(delimTerm)] = 0;
+                return strlen(dataIn) - strlen(delimTerm);
+            }
+            memset(&buff, 0, 1024);
+        }
+    }
+}
+
+
 void clientToServer(conServArgs* args){
 	//func that change struct into toString
 	char* data = readFile(args->dataToSort);
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
-	printf("sd in func: %d\n", sd);
+	//printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
-	char* message = (char*)(malloc(strlen(data)+ strlen("<data>")+strlen("</data>") + strlen("<colName>")+strlen("</colName>") + strlen("<action>")+strlen("</action>")));
-	sprintf(message, "%s%s%s%s%s%s%s%s%s", "<data>", data, "</data>", "<colName>", colName, "</colName>", "<action>", action, "</action>");
+	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+strlen("<doc><data></data><colName></colName><action></action></doc>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action></doc>\r\n", data, colName, action);
+
 	
 	/*mutex lock*/
 	pthread_mutex_init(&action_lock, NULL);
 	/*send message*/
-	send(sd, &message, sizeof(message), 0);
+	
+	printf("********\n");
+	int bytes = send(sd, message, strlen(message), 0);
+	printf("++++++++\n");
+	printf("%d\n", bytes);
 
+	char* recMsg = NULL;
 	/*wait for response*/
-	int rec = recv(sd, &message, sizeof(message), 0);
+	int rec;
+	//printf("right before while\n");
 	while(1){
-		if(rec == 0){
-			printf("The peer performed an orderly shutdown. \n");
-		}else if(rec == -1){
-			printf("errno error.\n");
+		//printf("right before readSocket in while\n");
+		rec = readSocket(sd, &recMsg);
+		//printf("right after readSocket in while\n");
+		//printf("inside loop: %s\n", recMsg);
+		if(rec == -1){
+			printf("failed.\n");
 		}else{
 			break;
 		}
 	}
-	printf("%s", rec);
+	printf("message: %s \n", recMsg);
 	pthread_mutex_destroy(&action_lock);
 	
 }
+
+
