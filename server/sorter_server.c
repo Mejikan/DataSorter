@@ -20,21 +20,21 @@ typedef
     }  
 ClientArgs;
 
-int port = 25567;
+int port = 25566;
 
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
     while (ptr != NULL){
-        if (pthread_mutex_trylock(ptr->recsLock) == 0){ // able to acquire data lock
+        if (pthread_mutex_trylock(&(ptr->recsLock)) == 0){ // able to acquire data lock
             if (ptr->numOfRecs == -1){ // empty collection
                 *dest = ptr;
                 return 0;
             } else { // not empty
-                pthread_mutex_unlock(ptr->recsLock);
+                pthread_mutex_unlock(&(ptr->recsLock));
             }
         }
 
-        pthread_mutex_t *nextLock = ptr->nextLock;
+        pthread_mutex_t *nextLock = &(ptr->nextLock);
         pthread_mutex_lock(nextLock);
         if (ptr->next == NULL){ // if at last element in collections
             // create new node
@@ -43,9 +43,9 @@ int getEmptyCollection(Node **dest){
             collection->next = NULL;
             collection->numOfRecs = -1;
             collection->recs = NULL;
-            pthread_mutex_init(collection->nextLock, NULL);
-            pthread_mutex_init(collection->recsLock, NULL);
-            pthread_mutex_lock(collection->recsLock);
+            pthread_mutex_init(&(collection->nextLock), NULL);
+            pthread_mutex_init(&(collection->recsLock), NULL);
+            pthread_mutex_lock(&(collection->recsLock));
             *dest = collection;
             ptr->next = collection;
             pthread_mutex_unlock(nextLock);
@@ -68,7 +68,7 @@ int findCollection(int id, Node **dest){
             *dest = ptr;
             return 0;
         }
-        pthread_mutex_t *nextLock = ptr->nextLock;
+        pthread_mutex_t *nextLock = &(ptr->nextLock);
         pthread_mutex_lock(nextLock);
         if (ptr->next == NULL){ // if at last element in collections
             pthread_mutex_unlock(nextLock);
@@ -82,22 +82,28 @@ int findCollection(int id, Node **dest){
 
 int readSocket(int socket, char **dataPtr){
     char *dataIn = (char*)malloc(1);
-    dataIn[0] = '\0';
+    dataIn[0] = 0;
     char buff[1024];
     memset(&buff, 0, 1024);
 
     while (1){
+        puts("hello4");
         short bytes = recv(socket, buff, 1024, 0);
+        printf("bytes read: %d\n", bytes);
         if (bytes < 0){
+            puts("hello5");
             perror("Failed to read from client");
             free(dataIn);
             return -1;
         } else if (bytes == 0){ //EOF (end of stream)
+            puts("hello6");
             *dataPtr = dataIn;
             return strlen(dataIn);
         } else {
+            puts("hello7");
             dataIn = (char*) realloc(dataIn, bytes + strlen(dataIn) + 1);
-            sprintf(dataIn, "%s%s", dataIn, buff);
+            strcat(dataIn, buff);
+            printf("current data in: %s\n", dataIn);
             memset(&buff, 0, 1024);
         }
     }
@@ -105,6 +111,18 @@ int readSocket(int socket, char **dataPtr){
 
 void runClient(ClientArgs *args){
     int socket = args->socket;
+    char *dttr = NULL;
+    puts("reading message from client");
+    int rres = readSocket(socket, &dttr);
+    printf("READ FROM CLIENT: %s\n", dttr);
+
+    puts("sending message to client");
+    int wres = send(socket, "HELLO CLIENT!\n", strlen("HELLO CLIENT!\n"), 0);
+    if (wres < 0){
+        perror("message failed to send");
+    } else {
+        puts("message sent to client");
+    }
 
     while (1){
         char *dataIn = NULL;
@@ -160,16 +178,16 @@ void runClient(ClientArgs *args){
                             
                             collection->numOfRecs = numOfRecs;
                             collection->recs = parsedrecs;
-                            pthread_mutex_unlock(collection->recsLock);
+                            pthread_mutex_unlock(&(collection->recsLock));
                             // ~~~~WRITE COLLECTION ID TO CLIENT
-                            
+                            //send(socket, payloadStr, payloadStrSize, 0);
 
                         } else { // find existing collection
                             if (findCollection(collectionId, &collection) < 0){
                                 puts("Cannot find requested collection.");
                             } else {
                                 // merge collection
-                                pthread_mutex_lock(collection->recsLock);
+                                pthread_mutex_lock(&(collection->recsLock));
                                 collection->recs = (Record**) realloc(collection->recs, (collection->numOfRecs) + numOfRecs);
                                 int j = 0;
                                 int i = collection->numOfRecs;
@@ -179,7 +197,7 @@ void runClient(ClientArgs *args){
                                     j++;
                                     i++;
                                 }
-                                pthread_mutex_unlock(collection->recsLock);
+                                pthread_mutex_unlock(&(collection->recsLock));
                             }
                         }
                     }
@@ -187,7 +205,7 @@ void runClient(ClientArgs *args){
             } else if (action == DUMP && tarColName != NULL && collectionId > -1){ // SORT and DUMP
                 Node *collection = NULL;
                 if (findColumnIndex(tarColName) >= 0 && findCollection(collectionId, &collection) >= 0){
-                    pthread_mutex_lock(collection->recsLock);
+                    pthread_mutex_lock(&(collection->recsLock));
 
                     mergeSortInt(collection->recs, collection->numOfRecs, collectionId);
                     char *csvStr = NULL;
@@ -206,7 +224,7 @@ void runClient(ClientArgs *args){
                         puts("Data string is null!");
                     }
 
-                    pthread_mutex_unlock(collection->recsLock);
+                    pthread_mutex_unlock(&(collection->recsLock));
                 }
             }
         }
@@ -248,20 +266,22 @@ int main(int argc, char **argv){
     collection->next = NULL;
     collection->numOfRecs = -1;
     collection->recs = NULL;
-	pthread_mutex_init(collection->nextLock, NULL);
-    pthread_mutex_init(collection->recsLock, NULL);
+	pthread_mutex_init(&(collection->nextLock), NULL);
+    pthread_mutex_init(&(collection->recsLock), NULL);
 
     int size = 10;
 	pthread_t* tid = (pthread_t*)malloc(size * sizeof(pthread_t));
 	int numTid = 0;
 
     int clientSocket = -1;
+    puts("hello1");
     while (1){
         clientSocket = accept(serverSocket, (struct sockaddr *)&addr, &addrlen);
         if (clientSocket < 0){
             printf("Failed to accept socket.\n");
             return -1;
         } else {
+            printf("Client connected! %d\n", numTid);
             ClientArgs *args = (ClientArgs*) malloc(sizeof(ClientArgs));
             args->socket = clientSocket;
 
@@ -269,8 +289,10 @@ int main(int argc, char **argv){
                 size = (size + 10);
                 tid = (pthread_t*)realloc(tid, size * sizeof(pthread_t));
             }
+            puts("hello2");
 
             pthread_create(&tid[numTid], NULL, (void*)runClient, args);
+            puts("hello3");
             numTid++;
         }
     }

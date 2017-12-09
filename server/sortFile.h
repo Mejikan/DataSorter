@@ -4,17 +4,6 @@ enum DataType {
 	TYPE_NULL
 };
 
-typedef 
-	struct Node {
-		int id;
-		Node *next;
-		pthread_mutex_t *nextLock; // gain if modifying next
-		long numOfRecs; // if -1, then it is unused
-		Record **recs;
-		pthread_mutex_t *recsLock; // gain if modifying data(recs)
-	}
-Node;
-
 typedef
 struct _Field{
     enum DataType type;
@@ -28,6 +17,17 @@ struct _Record{
     int numOfCols;
 }
 Record;	
+
+typedef 
+	struct Node {
+		int id;
+		struct Node *next;
+		pthread_mutex_t nextLock; // gain if modifying next
+		long numOfRecs; // if -1, then it is unused
+		Record **recs;
+		pthread_mutex_t recsLock; // gain if modifying data(recs)
+	}
+Node;
 
 typedef struct _regFileArgs{
 	int structureId;
