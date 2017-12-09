@@ -12,7 +12,7 @@
 #include "sortFile.h"
 #include "sorter.h"
 
-int port = 25565;
+
 	
 char *outputFile;
 pthread_mutex_t rec_lock;
@@ -196,7 +196,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
+	server.sin_port = htons(25566);
 	
 	//getaddrinfo
 
@@ -260,6 +260,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				args->colName = tarColName;
 				args->action = "sort";
 				args->socketDesc = sd;
+				args->collecId = 0;
 				
 				
 				if ( (numTid+1) > size ){
@@ -454,7 +455,7 @@ int readSocket(int socket, char **dataPtr){
     memset(&buff, 0, 1024);
 
     while (1){
-        short bytes = recv(socket, buff, 1023, 0);
+        short bytes = recv(socket, buff, 1024, 0);
         if (bytes < 0){
             perror("Failed to read from client");
             free(dataIn);
@@ -463,12 +464,9 @@ int readSocket(int socket, char **dataPtr){
             *dataPtr = dataIn;
             return strlen(dataIn);
         } else {
-            int dataInLen = bytes + strlen(dataIn) + 1;
-            dataIn = (char*) realloc(dataIn, dataInLen);
+            dataIn = (char*) realloc(dataIn, bytes + strlen(dataIn) + 1);
             strcat(dataIn, buff);
-            char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
-            if ( strcmp(delimPtr, delimTerm) == 0 ){
-                
+            if (strstr(dataIn, delimTerm) == (dataIn + bytes - strlen(delimTerm))){
                 *dataPtr = dataIn;
                 dataPtr[bytes - strlen(delimTerm)] = 0;
                 return strlen(dataIn) - strlen(delimTerm);
@@ -485,11 +483,12 @@ void clientToServer(conServArgs* args){
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
+	int collecId = args->collecId;
 	//printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
-	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+strlen("<doc><data></data><colName></colName><action></action></doc>\r\n")+1);
-	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action></doc>\r\n", data, colName, action);
+	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n", data, colName, action, collecId);
 
 	
 	/*mutex lock*/
@@ -517,6 +516,7 @@ void clientToServer(conServArgs* args){
 		}
 	}
 	printf("message: %s \n", recMsg);
+	//read id 
 	pthread_mutex_destroy(&action_lock);
 	
 }
