@@ -20,7 +20,7 @@ typedef
     }  
 ClientArgs;
 
-int port = 25566;
+int port = 25565;
 
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
@@ -81,29 +81,30 @@ int findCollection(int id, Node **dest){
 }
 
 int readSocket(int socket, char **dataPtr){
+    char *delimTerm = "\r\n";
+
     char *dataIn = (char*)malloc(1);
     dataIn[0] = 0;
     char buff[1024];
     memset(&buff, 0, 1024);
 
     while (1){
-        puts("hello4");
         short bytes = recv(socket, buff, 1024, 0);
-        printf("bytes read: %d\n", bytes);
         if (bytes < 0){
-            puts("hello5");
             perror("Failed to read from client");
             free(dataIn);
             return -1;
         } else if (bytes == 0){ //EOF (end of stream)
-            puts("hello6");
             *dataPtr = dataIn;
             return strlen(dataIn);
         } else {
-            puts("hello7");
             dataIn = (char*) realloc(dataIn, bytes + strlen(dataIn) + 1);
             strcat(dataIn, buff);
-            printf("current data in: %s\n", dataIn);
+            if (strstr(dataIn, delimTerm) == (dataIn + bytes - strlen(delimTerm))){
+                *dataPtr = dataIn;
+                dataPtr[bytes - strlen(delimTerm)] = 0;
+                return strlen(dataIn);
+            }
             memset(&buff, 0, 1024);
         }
     }
@@ -117,7 +118,7 @@ void runClient(ClientArgs *args){
     printf("READ FROM CLIENT: %s\n", dttr);
 
     puts("sending message to client");
-    int wres = send(socket, "HELLO CLIENT!\n", strlen("HELLO CLIENT!\n"), 0);
+    int wres = send(socket, "HELLO CLIENT!\r\n", strlen("HELLO CLIENT!\r\n"), 0);
     if (wres < 0){
         perror("message failed to send");
     } else {
