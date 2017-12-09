@@ -36,13 +36,13 @@ typedef struct _regFileArgs{
 	int (*mergeData)(Record**, int, int, int);
 }regFileArgs;
 
-
+int findColumnIndex(char *tarColName);
 int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs);
 short determineTypeofData(char *);
 void trim(char*);
 void mergeSortInt(Record**, int, int);			
 void mergeInt(Record**, Record**, Record**, int, int, int);
-void printArray(Record**, int, FILE*);
+void printArray(Record**, int, char**);
 Record *csvToRec(char *);
 int sortCSV(regFileArgs *);
 void freeRec(Record*);
