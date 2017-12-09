@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include "sortFile.h"
 #include "sorter.h"
+#include "xmlparse.h"
 
 
 	
@@ -260,7 +261,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				args->colName = tarColName;
 				args->action = "sort";
 				args->socketDesc = sd;
-				args->collecId = 0;
+				args->collecId = "0";
 				
 				
 				if ( (numTid+1) > size ){
@@ -483,12 +484,12 @@ void clientToServer(conServArgs* args){
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
-	int collecId = args->collecId;
+	char* collecId = args->collecId;
 	//printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
-	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+ strlen(itoa(collecId))+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", data, colName, action, collecId);
+	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+ strlen(collecId))+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n", data, colName, action, collecId);
 
 	
 	/*mutex lock*/
