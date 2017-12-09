@@ -20,7 +20,7 @@ typedef
     }  
 ClientArgs;
 
-int port = 25566;
+int port = 25565;
 
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
@@ -89,31 +89,24 @@ int readSocket(int socket, char **dataPtr){
     memset(&buff, 0, 1024);
 
     while (1){
-        puts("something");
-        short bytes = recv(socket, buff, 1024, 0);
+        short bytes = recv(socket, buff, 1023, 0);
         if (bytes < 0){
-            puts("something0");
             perror("Failed to read from client");
             free(dataIn);
             return -1;
         } else if (bytes == 0){ //EOF (end of stream)
-        puts("something1");
             *dataPtr = dataIn;
             return strlen(dataIn);
         } else {
             int dataInLen = bytes + strlen(dataIn) + 1;
             dataIn = (char*) realloc(dataIn, dataInLen);
             strcat(dataIn, buff);
-            printf("READ SOCKET %d: %s\n", bytes, dataIn);
-            char *delimPtr = dataIn;
-            delimPtr += (dataInLen - strlen(delimTerm));
-            if ( strcmp(delimPtr, "\r\n") == 0){
-                printf("**EOF\n");
+            char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
+            if ( strcmp(delimPtr, delimTerm) == 0 ){
+                
                 *dataPtr = dataIn;
                 dataPtr[bytes - strlen(delimTerm)] = 0;
                 return strlen(dataIn) - strlen(delimTerm);
-            } else {
-                printf("DELIM: ***%s***\n", delimPtr);
             }
             memset(&buff, 0, 1024);
         }
