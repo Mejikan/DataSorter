@@ -4,6 +4,23 @@
 #include "sortFile.h"
 #include "mergesort.c"
 
+char* reqCol[28] = {"color", "director_name","num_critic_for_reviews","duration","director_facebook_likes","actor_3_facebook_likes","actor_2_name","actor_1_facebook_likes","gross","genres","actor_1_name","movie_title","num_voted_users","cast_total_facebook_likes","actor_3_name","facenumber_in_poster","plot_keywords","movie_imdb_link","num_user_for_reviews","language","country","content_rating","budget","title_year","actor_2_facebook_likes","imdb_score","aspect_ratio","movie_facebook_likes"};
+int findColumnIndex(char *tarColName){
+
+	// find column index correlated to column name
+	int tarColIdx = -1;
+	int i = 0;
+	while (i < 28){
+		if (strcmp(tarColName, reqCol[i]) == 0){
+			tarColIdx = i;
+			break;
+		}
+		i++;
+	}
+	
+	return tarColIdx;
+}
+
 int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
 	if (dest == NULL || totalRecs == NULL || csvData == NULL || strlen(csvData) < 1){
 		return -1;
@@ -14,10 +31,42 @@ int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
 	// --- PARSE CSV STRING INTO RECORDS --- //
 	char *colNames;
 	char *recTkn;
-	char* reqCol[28] = {"color", "director_name","num_critic_for_reviews","duration","director_facebook_likes","actor_3_facebook_likes","actor_2_name","actor_1_facebook_likes","gross","genres","actor_1_name","movie_title","num_voted_users","cast_total_facebook_likes","actor_3_name","facenumber_in_poster","plot_keywords","movie_imdb_link","num_user_for_reviews","language","country","content_rating","budget","title_year","actor_2_facebook_likes","imdb_score","aspect_ratio","movie_facebook_likes"};
-
+	//char* reqCol[28] = {"color", "director_name","num_critic_for_reviews","duration","director_facebook_likes","actor_3_facebook_likes","actor_2_name","actor_1_facebook_likes","gross","genres","actor_1_name","movie_title","num_voted_users","cast_total_facebook_likes","actor_3_name","facenumber_in_poster","plot_keywords","movie_imdb_link","num_user_for_reviews","language","country","content_rating","budget","title_year","actor_2_facebook_likes","imdb_score","aspect_ratio","movie_facebook_likes"};
+	
 	recTkn = strtok_r(inCsvStr, "\n", &inCsvStr);
 	colNames = recTkn;
+	
+	// parse column names
+	
+	char headerStr[strlen(colNames)+1];
+	snprintf(headerStr, strlen(colNames)+1, "%s", colNames);
+	Record *header = csvToRec(headerStr);
+	int i = 0;
+	int j = 0;
+	int successes = 0; // match column names
+	int len = sizeof(reqCol)/sizeof(char*);
+
+	if(header->numOfCols != len){
+		freeRec(header);
+		return -1;
+	}
+	
+	while(i < len){
+		while(j<len){
+			//printf("stuff: %s %s\n", header->fields[j].data, reqCol[i]);
+			if(strcmp(header->fields[j].data, reqCol[i]) == 0){		//free memory
+				successes++;
+				break;
+			}
+			j++;
+		}
+		i++;
+	}
+
+	if(successes != len){
+		freeRec(header);
+		return -1;
+	}
 
 	recTkn = strtok_r(NULL,"\n", &inCsvStr);
 	if (recTkn == NULL){
@@ -25,11 +74,10 @@ int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
 		//printf("\n[Error - \"%s\"]: There are no records in file.\n", inFileName);
 		return -1;					
 	}
-	//free(inFileName);
 	
 	Record **recs = (Record**)malloc(1 * sizeof(Record*));		//SHOULD THERE BE A '1' IN THIS MALLOC
 	if (recs == NULL){ // failed to alloc memory
-		printf("Failed to allocate memory.\n");
+		//printf("Failed to allocate memory.\n");
 		return -1;
 	}
 	
@@ -48,6 +96,7 @@ int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
 	return 0;
 }
 
+/*
 int sortCSV(regFileArgs *args){
 	
 	char* inFileName = args->entryId;
@@ -65,7 +114,7 @@ int sortCSV(regFileArgs *args){
 	colNames = recTkn;
 	
 	// parse column names
-	/*
+	
 	char headerStr[strlen(colNames)+1];
 	snprintf(headerStr, strlen(colNames)+1, "%s", colNames);
 	Record *header = csvToRec(headerStr);
@@ -98,7 +147,7 @@ int sortCSV(regFileArgs *args){
 		freeRec(header);
 		return -1;
 	}
-	*/
+	
 	// find column index correlated to column name
 	int tarColIdx = -1;
 	int i = 0;
@@ -152,21 +201,21 @@ int sortCSV(regFileArgs *args){
 	args->mergeData(recs, totalRecs, tarColIdx, args->structureId);
 		
 	// --- CLEANUP --- //
-	/*
+	
 	recIdx = 0;
 	while (recIdx < totalRecs){
 		Record *rec = recs[recIdx];
 		//freeRec(rec);
 		recIdx++;
 	}
-	*/
+	
 	free(recs);
 	free(fcontents);
 	free(args);
 
 	return 0;
 	
-}
+}*/
 
 void freeRec(Record *rec){
 	Field *fields = rec->fields;
@@ -340,4 +389,55 @@ char *readFile(char *filename){
   //printf("Read In: %s\n", fileContent);
 
   return fileContent;
+}
+
+void printArray(Record** records, int len, char **dest)
+{
+	char *res = (char*)malloc(1);
+	res[0] = 0;
+
+    int recIdx = 0;
+	while (recIdx < len){
+		Record *record = records[recIdx];
+		int fieldIdx = 0;
+		while (fieldIdx < record->numOfCols){
+			if (fieldIdx != 0){
+				//printf(",");
+				//fprintf(fptr, ",");
+				//sprintf(*dest, ",");
+				strcat(res, ",");
+			}
+			if (!strchr(record->fields[fieldIdx].data, ',')){
+				//printf("%s", record->fields[fieldIdx].data);
+				//fprintf(fptr, "%s", record->fields[fieldIdx].data);
+				//sprintf(*dest, "%s", record->fields[fieldIdx].data);
+				//if (fieldIdx != (len-1)){
+				//	res = (char*)realloc(res, strlen(res) + 1 + strlen(record->fields[fieldIdx].data) + 1);
+				//} else {
+					res = (char*)realloc(res, strlen(res) + strlen(record->fields[fieldIdx].data) + 1);
+				//}
+				strcat(res, record->fields[fieldIdx].data);
+			} else {
+				//printf("\"%s\"", record->fields[fieldIdx].data);
+				//fprintf(fptr, "\"%s\"", record->fields[fieldIdx].data);
+				//sprintf(*dest, "\"%s\"", record->fields[fieldIdx].data);
+				//if (fieldIdx != (len-1)){
+				//	res = (char*)realloc(res, strlen(res) + 1 + 2 + strlen(record->fields[fieldIdx].data) + 1);
+				//} else {
+					res = (char*)realloc(res, strlen(res) + 2 + strlen(record->fields[fieldIdx].data) + 1);
+				//}
+				strcat(res, "\"");
+				strcat(res, record->fields[fieldIdx].data);
+				strcat(res, "\"");
+			}
+			fieldIdx++;
+		}
+		//printf("\n");
+		//fprintf(fptr, "\n");
+		//sprintf(*dest, "\n");
+		strcat(res, "\n");
+		recIdx++;
+	}
+
+	*dest = res;
 }

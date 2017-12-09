@@ -161,6 +161,9 @@ void runClient(ClientArgs *args){
                             collection->numOfRecs = numOfRecs;
                             collection->recs = parsedrecs;
                             pthread_mutex_unlock(collection->recsLock);
+                            // ~~~~WRITE COLLECTION ID TO CLIENT
+                            
+
                         } else { // find existing collection
                             if (findCollection(collectionId, &collection) < 0){
                                 puts("Cannot find requested collection.");
@@ -182,7 +185,29 @@ void runClient(ClientArgs *args){
                     }
                 }
             } else if (action == DUMP && tarColName != NULL && collectionId > -1){ // SORT and DUMP
-                
+                Node *collection = NULL;
+                if (findColumnIndex(tarColName) >= 0 && findCollection(collectionId, &collection) >= 0){
+                    pthread_mutex_lock(collection->recsLock);
+
+                    mergeSortInt(collection->recs, collection->numOfRecs, collectionId);
+                    char *csvStr = NULL;
+                    printArray(collection->recs, collection->numOfRecs, &csvStr);
+                    if (csvStr != NULL){
+                        char *payloadStrMetaFormat = "<response><data></data><error></error></response>";
+                        int payloadStrSize = strlen(csvStr) + strlen(payloadStrMetaFormat) + 1;
+                        char *payloadStr = (char*)malloc(payloadStrSize);
+                        sprintf(payloadStr, "<response><data>%s</data><error></error></response>", csvStr);
+
+                        send(socket, payloadStr, payloadStrSize, 0);
+
+                        free(payloadStr);
+                        free(csvStr);
+                    } else {
+                        puts("Data string is null!");
+                    }
+
+                    pthread_mutex_unlock(collection->recsLock);
+                }
             }
         }
     }
@@ -202,7 +227,7 @@ int main(int argc, char **argv){
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == 0){
-        puts("Failed to create socket.\n");
+        puts("Failed to create socket.");
         return -1;
     }
     if ( bind(serverSocket, (struct sockaddr *)&addr, addrlen) < 0 ){
