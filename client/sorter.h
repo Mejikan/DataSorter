@@ -34,3 +34,4 @@ int recurseDir(recurseDirArgs *);
 int mergeDataLinear(Record**, int, int);
 void addTid(pthread_t*, int);
 void clientToServer(conServArgs *);
+int getClientId(int);
