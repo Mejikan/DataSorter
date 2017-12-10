@@ -341,6 +341,13 @@ int recurseDir(recurseDirArgs *dirArgs){
 
 	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
 	
+	int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
+				
+	if(connectStatus < 0){
+		printf("ERROR, connect faield\n");
+		exit(0);
+	}
+	
 	/*created single socket*/
 	/*colName , collecId, action*/
 	
