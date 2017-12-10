@@ -59,9 +59,6 @@ int main(int argc, char **argv){
 	}
 
 	printf("host name: %s\n",hostName);
-
-	
-	
 	
 	if(inputDir == NULL){
 		inputDir = ".";
@@ -114,6 +111,8 @@ int main(int argc, char **argv){
 
 	outputFile = (char*)malloc(strlen(outputDir) + strlen("/AllFiles-sorted-") + strlen(tarColName) + strlen(".csv") + 1);
 	sprintf(outputFile, "%s%s%s%s", outputDir, "/AllFiles-sorted-", tarColName, ".csv");
+
+	pthread_mutex_init(&id_lock, NULL);
 
 	recurseDirArgs *args = (recurseDirArgs*)malloc(sizeof(recurseDirArgs));
 	args->tarColName = tarColName;
@@ -561,13 +560,13 @@ void clientToServer(conServArgs* args){
 	XMLDoc *doc = fromXmlStr(recMsg);
 	while(i < doc->numOfChildren){
 		XMLDoc *child = doc->children[i];
-		if(strcasecmp(child->name, "collectionId"){
+		if(strcasecmp(child->name, "collectionId")){
 			msgId = child->text;
 		}
 		i++;
 	}
 	
-	pthread_mutex_init(&id_lock, NULL);
+	
 	getClientId(msgId);
 	
 	
