@@ -127,14 +127,13 @@ int main(int argc, char **argv){
 	pthread_mutex_destroy(&rec_lock);
 	pthread_mutex_destroy(&tid_lock);
 
-	if (gNumOfRecs > 0){
-		FILE* fptr = fopen(outputFile, "w+");
-		fprintf(fptr, "color,director_name,num_critic_for_reviews,duration,director_facebook_likes,actor_3_facebook_likes,actor_2_name,actor_1_facebook_likes,gross,genres,actor_1_name,movie_title,num_voted_users,cast_total_facebook_likes,actor_3_name,facenumber_in_poster,plot_keywords,movie_imdb_link,num_user_for_reviews,language,country,content_rating,budget,title_year,actor_2_facebook_likes,imdb_score,aspect_ratio,movie_facebook_likes\n");
-		printArray(gRecs, gNumOfRecs, fptr);
-		fclose(fptr);
-	}
+	
+	FILE* fptr = fopen(outputFile, "w+");
+	fprintf(sortedCsvStr);
+	fclose(fptr);
+	
 
-	printf("TIDS of all child threads: ");
+	/*printf("TIDS of all child threads: ");
 	int j = 0;
 	while (j < gNumOfTids){
 		printf("%lu", gTid[j]);
@@ -144,7 +143,7 @@ int main(int argc, char **argv){
 		j++;
 	}
 	printf("\nTotal number of threads: %d\n", gNumOfTids);
-	
+	*/
 
 	//free(args);
 	free(outputFile);
@@ -365,7 +364,24 @@ int recurseDir(recurseDirArgs *dirArgs){
 	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ 24 +strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
 	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", tarColName, "dump", clientId);
 			
-	 send(sdesc, message, strlen(message), 0);
+	send(sdesc, message, strlen(message), 0);
+	
+	char* recMsg = NULL;
+	
+	int rec;
+	rec = readSocket(sd, &recMsg);
+	if(rec == -1){
+		printf("failed.\n");
+	}
+	close(sd);
+	
+	char* sortedCsvStr = NULL;
+	char* msgId = NULL;
+	XMLDoc *doc = fromXmlStr(recMsg);
+	XMLDoc child = doc->children[0]
+	
+	sortedCsvStr = child->text;
+	
 	
 	
 	
@@ -543,14 +559,11 @@ void clientToServer(conServArgs* args){
 	printf("%d\n", bytes);
 
 	char* recMsg = NULL;
-	/*wait for response*/
-	int rec;
-	//printf("right before while\n");
 	
-	//printf("right before readSocket in while\n");
+	int rec;
+	
+	
 	rec = readSocket(sd, &recMsg);
-	//printf("right after readSocket in while\n");
-	//printf("inside loop: %s\n", recMsg);
 	if(rec == -1){
 		printf("failed.\n");
 	}
