@@ -20,7 +20,7 @@ typedef
     }  
 ClientArgs;
 
-int port = 25566;
+int port = 25565;
 
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
@@ -260,16 +260,21 @@ void runClient(ClientArgs *args){
                         csvStr[0] = 0;
                     }
 
+                    char *csvHeaderStr = "color,director_name,num_critic_for_reviews,duration,director_facebook_likes,actor_3_facebook_likes,actor_2_name,actor_1_facebook_likes,gross,genres,actor_1_name,movie_title,num_voted_users,cast_total_facebook_likes,actor_3_name,facenumber_in_poster,plot_keywords,movie_imdb_link,num_user_for_reviews,language,country,content_rating,budget,title_year,actor_2_facebook_likes,imdb_score,aspect_ratio,movie_facebook_likes\n";
+                    char *fullCsvStr = (char*)malloc(strlen(csvHeaderStr) + strlen(csvStr) + 1);
+                    sprintf(fullCsvStr, "%s%s", csvHeaderStr, csvStr);
+                    char *escapedPayloadData = toEscStr(fullCsvStr);
+
                     puts("dumping data...");
 
-                    char *payloadStrMetaFormat = "<response><data></data></response>";
-                    int payloadStrSize = strlen(csvStr) + strlen(payloadStrMetaFormat) + 1;
+                    char *payloadStrMetaFormat = "<response><data></data></response>\r\n";
+                    int payloadStrSize = strlen(escapedPayloadData) + strlen(payloadStrMetaFormat) + 1;
                     puts("pie1");
                     char *payloadStr = (char*)malloc(payloadStrSize);
                     puts("pie2");
-                    sprintf(payloadStr, "<response><data>%s</data></response>", csvStr);
+                    sprintf(payloadStr, "<response><data>%s</data></response>\r\n", escapedPayloadData);
                     puts("pie3");
-                    send(socket, payloadStr, payloadStrSize, 0);
+                    send(socket, payloadStr, payloadStrSize-1, 0);
                     puts("pie4");
                     free(payloadStr);
                     free(csvStr);

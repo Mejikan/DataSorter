@@ -27,7 +27,7 @@ typedef struct conServArgs{
 };*/
 
 
-
+int readSocket(int socket, char **dataPtr);
 char *readCmdArgs(int,  char**);
 char *readSTDIN();
 int recurseDir(recurseDirArgs *);

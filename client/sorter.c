@@ -29,6 +29,8 @@ int clientId = -1;
 
 char* hostName = NULL;
 
+char* sortedCsvStr = NULL;
+
 int main(int argc, char **argv){
 	// --- READ CMD ARGS INTO BUFFER --- //
 	
@@ -127,9 +129,11 @@ int main(int argc, char **argv){
 	pthread_mutex_destroy(&rec_lock);
 	pthread_mutex_destroy(&tid_lock);
 
-	
+	puts("opening fiel");
 	FILE* fptr = fopen(outputFile, "w+");
-	fprintf(sortedCsvStr);
+	puts("writing to file");
+	fprintf(fptr, "%s", sortedCsvStr);
+	puts("closing file");
 	fclose(fptr);
 	
 
@@ -219,7 +223,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				
 				struct sockaddr_in server;
 				server.sin_family = AF_INET;
-				server.sin_port = htons(25566);
+				server.sin_port = htons(25565);
 				
 				//getaddrinfo
 
@@ -334,7 +338,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(25566);
+	server.sin_port = htons(25565);
 	
 	//getaddrinfo
 
@@ -365,20 +369,20 @@ int recurseDir(recurseDirArgs *dirArgs){
 	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", tarColName, "dump", clientId);
 			
 	send(sdesc, message, strlen(message), 0);
-	
+
 	char* recMsg = NULL;
 	
+
 	int rec;
-	rec = readSocket(sd, &recMsg);
+	rec = readSocket(sdesc, &recMsg);
 	if(rec == -1){
 		printf("failed.\n");
 	}
-	close(sd);
+	close(sdesc);
 	
-	char* sortedCsvStr = NULL;
 	char* msgId = NULL;
 	XMLDoc *doc = fromXmlStr(recMsg);
-	XMLDoc child = doc->children[0]
+	XMLDoc *child = doc->children[0];
 	
 	sortedCsvStr = child->text;
 	
