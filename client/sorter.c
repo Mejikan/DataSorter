@@ -19,11 +19,13 @@ char *outputFile;
 pthread_mutex_t rec_lock;
 pthread_mutex_t tid_lock;
 pthread_mutex_t action_lock;
+pthread_mutex_t id_lock;
 
 Record** gRecs;
 int gNumOfRecs = 0;
 pthread_t* gTid;
 int gNumOfTids = 0;
+int clientId = -1;
 
 char* hostName = NULL;
 
@@ -147,6 +149,7 @@ int main(int argc, char **argv){
 
 	//free(args);
 	free(outputFile);
+	pthread_mutex_destroy(&id_lock);
 
 	return 0;
 }
@@ -163,6 +166,16 @@ int mergeDataLinear(Record** recs, int numOfRecs, int columnName){
 
 	pthread_mutex_unlock(&rec_lock);
 	return 3;
+}
+
+int getClientId(int id){
+	pthread_mutex_init(&id_lock, NULL);
+	pthread_mutex_lock(&id_lock);
+	if(clientId == -1){
+		clientId = id;
+	}
+	pthread_mutex_unlock(&id_lock);
+	//do i destroy lock here??
 }
 
 int recurseDir(recurseDirArgs *dirArgs){
@@ -191,7 +204,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	//printf("CONNECTED \n");
 	
 	
-	
+	//int counter = 0;
 	while((entry = readdir(dptr)) != NULL){
 		if(entry->d_type == DT_REG){ // checks if entry found is a regular file
 			
@@ -200,7 +213,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				('s' == entry->d_name[len - 2] || 'S' == entry->d_name[len - 2]) &&
 				('v' == entry->d_name[len - 1] || 'V' == entry->d_name[len - 1])){ // check if file found is .csv
 					
-					int sd = socket(AF_INET, SOCK_STREAM, 0);
+				int sd = socket(AF_INET, SOCK_STREAM, 0);
 	
 				if(sd < 0){
 					printf("Error, could not create socket\n");
@@ -522,7 +535,6 @@ void clientToServer(conServArgs* args){
 
 	
 	/*mutex lock*/
-	pthread_mutex_init(&action_lock, NULL);
 	/*send message*/
 	
 	printf("********\n");
@@ -545,9 +557,22 @@ void clientToServer(conServArgs* args){
 	}
 	close(sd);
 	
-	printf("message: %s \n", recMsg);
-	//read id 
-	pthread_mutex_destroy(&action_lock);
+	int i = 0;
+	char* msgId = NULL;
+	XMLDoc *doc = fromXmlStr(recMsg);
+	while(i < doc->numOfChildren){
+		XMLDoc *child = doc->children[i];
+		if(strcasecmp(child->name, "collectionId"){
+			msgId = child->text;
+		}
+		i++;
+	}
+	
+	
+	getClientId(msgId);
+	
+	
+	/*should this be a destroy or unlock*/
 	
 }
 
