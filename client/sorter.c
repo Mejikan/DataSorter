@@ -341,7 +341,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 
 	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
 	
-	int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
+	int connectStatus = connect(sdesc, (struct sockaddr *)&server, sizeof(server));
 				
 	if(connectStatus < 0){
 		printf("ERROR, connect faield\n");
@@ -351,13 +351,11 @@ int recurseDir(recurseDirArgs *dirArgs){
 	/*created single socket*/
 	/*colName , collecId, action*/
 	
-	char* message = (char*)malloc(strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc>colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n"colName, "dump", "0");
+	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ strlen("0")+strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc>colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n,"tarColName, "dump", "0");
 				
 	
-	send(sdecs, )
-	dump(sd, "0", colName);
-	send(sd, message, strlen(message), 0);
+	
 	
 	//printf("[%s] All threads joined!\n", inputDir);
 	free(tid);
