@@ -498,6 +498,7 @@ void clientToServer(conServArgs* args){
 	
 	printf("********\n");
 	int bytes = send(sd, message, strlen(message), 0);
+	close(sd);
 	printf("++++++++\n");
 	printf("%d\n", bytes);
 
