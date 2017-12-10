@@ -197,7 +197,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(25566);
+	server.sin_port = htons(25565);
 	
 	//getaddrinfo
 
@@ -456,7 +456,7 @@ int readSocket(int socket, char **dataPtr){
     memset(&buff, 0, 1024);
 
     while (1){
-        short bytes = recv(socket, buff, 1024, 0);
+        short bytes = recv(socket, buff, 1023, 0);
         if (bytes < 0){
             perror("Failed to read from client");
             free(dataIn);
@@ -465,9 +465,12 @@ int readSocket(int socket, char **dataPtr){
             *dataPtr = dataIn;
             return strlen(dataIn);
         } else {
-            dataIn = (char*) realloc(dataIn, bytes + strlen(dataIn) + 1);
+            int dataInLen = bytes + strlen(dataIn) + 1;
+            dataIn = (char*) realloc(dataIn, dataInLen);
             strcat(dataIn, buff);
-            if (strstr(dataIn, delimTerm) == (dataIn + bytes - strlen(delimTerm))){
+            char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
+            if ( strcmp(delimPtr, delimTerm) == 0 ){
+                
                 *dataPtr = dataIn;
                 dataPtr[bytes - strlen(delimTerm)] = 0;
                 return strlen(dataIn) - strlen(delimTerm);
