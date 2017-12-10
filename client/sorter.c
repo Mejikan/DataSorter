@@ -143,6 +143,7 @@ int main(int argc, char **argv){
 		j++;
 	}
 	printf("\nTotal number of threads: %d\n", gNumOfTids);
+	
 
 	//free(args);
 	free(outputFile);
@@ -187,69 +188,51 @@ int recurseDir(recurseDirArgs *dirArgs){
 	}
 	
 	 
-	int sd = socket(AF_INET, SOCK_STREAM, 0);
-
-	
-	if(sd < 0){
-		printf("Error, could not create socket\n");
-		exit(0);
-	}
-	
-	struct sockaddr_in server;
-	server.sin_family = AF_INET;
-	server.sin_port = htons(25565);
-	
-	//getaddrinfo
-
-	struct hostent *hp;
-	char buffer[1024];
-
-	hp = gethostbyname(hostName);
-
-	if(hp == 0){
-		perror("gethostbyname failed \n");
-		exit(1);
-	}
-
-
-	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
-
-
-
-
-	/*struct addrInfo* res;
-	int pass = getaddrinfo("www.google.com", NULL, NULL, &res);
-	printf("pass: %d\n", pass);
-
-	if(pass){
-		printf("ERROR, could not getaddrinfo\n");
-		exit(0);
-	}*/
-
-
-
-	int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
-	
-	//printf("connectStatus: %d\n", connectStatus);
-		
-
-	if(connectStatus < 0){
-		printf("ERROR, connect faield\n");
-		exit(0);
-	}
 	//printf("CONNECTED \n");
 	
 	
 	
 	while((entry = readdir(dptr)) != NULL){
 		if(entry->d_type == DT_REG){ // checks if entry found is a regular file
-			//check ext
 			
 			int len = strlen(entry->d_name);
 			if('.' == entry->d_name[len - 4] && ('c' == entry->d_name[len - 3] || 'C' == entry->d_name[len - 3]) &&
 				('s' == entry->d_name[len - 2] || 'S' == entry->d_name[len - 2]) &&
 				('v' == entry->d_name[len - 1] || 'V' == entry->d_name[len - 1])){ // check if file found is .csv
 					
+					int sd = socket(AF_INET, SOCK_STREAM, 0);
+	
+				if(sd < 0){
+					printf("Error, could not create socket\n");
+					exit(0);
+				}
+				
+				struct sockaddr_in server;
+				server.sin_family = AF_INET;
+				server.sin_port = htons(25565);
+				
+				//getaddrinfo
+
+				struct hostent *hp;
+				char buffer[1024];
+
+				hp = gethostbyname(hostName);
+
+				if(hp == 0){
+					perror("gethostbyname failed \n");
+					exit(1);
+				}
+
+				memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
+
+				int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
+				
+				if(connectStatus < 0){
+					printf("ERROR, connect faield\n");
+					exit(0);
+				}
+					
+	
 				len = strlen(inputDir) + 1 + strlen(entry->d_name) + 1;
 				//char inFileName[strlen(inputDir) + 1 + strlen(entry->d_name) + 1]; // in file path
 				//sprintf(inFileName, "%s/%s", inputDir, entry->d_name);
@@ -333,6 +316,42 @@ int recurseDir(recurseDirArgs *dirArgs){
 	}
 	addTid(tid, numTid);
 
+	int sdesc = socket(AF_INET, SOCK_STREAM, 0);
+	if(sdesc < 0){
+		printf("Error, could not create socket\n");
+		exit(1);
+	}
+	
+	struct sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_port = htons(25565);
+	
+	//getaddrinfo
+
+	struct hostent *hp;
+	char buffer[1024];
+
+	hp = gethostbyname(hostName);
+
+	if(hp == 0){
+		perror("gethostbyname failed \n");
+		exit(1);
+	}
+
+
+	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
+	
+	/*created single socket*/
+	/*colName , collecId, action*/
+	
+	char* message = (char*)malloc(strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc>colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n"colName, "dump", "0");
+				
+	
+	send(sdecs, )
+	dump(sd, "0", colName);
+	send(sd, message, strlen(message), 0);
+	
 	//printf("[%s] All threads joined!\n", inputDir);
 	free(tid);
 	free(inputDir);
@@ -500,6 +519,7 @@ void clientToServer(conServArgs* args){
 	/*send message*/
 	
 	printf("********\n");
+	toEstStr(data);
 	int bytes = send(sd, message, strlen(message), 0);
 	
 	printf("++++++++\n");
