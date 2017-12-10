@@ -352,7 +352,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	/*colName , collecId, action*/
 	
 	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ strlen("0")+strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc>colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n,"tarColName, "dump", "0");
+	sprintf(message, "<doc>colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n,", tarColName, "dump", "0");
 				
 	
 	
