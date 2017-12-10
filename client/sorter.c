@@ -169,7 +169,6 @@ int mergeDataLinear(Record** recs, int numOfRecs, int columnName){
 }
 
 int getClientId(int id){
-	pthread_mutex_init(&id_lock, NULL);
 	pthread_mutex_lock(&id_lock);
 	if(clientId == -1){
 		clientId = id;
@@ -568,7 +567,7 @@ void clientToServer(conServArgs* args){
 		i++;
 	}
 	
-	
+	pthread_mutex_init(&id_lock, NULL);
 	getClientId(msgId);
 	
 	
