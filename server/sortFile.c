@@ -21,7 +21,7 @@ int findColumnIndex(char *tarColName){
 	return tarColIdx;
 }
 
-int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
+int parseDataIntoRecs(char *csvData, Record ***dest, int *totalRecs){
 	if (dest == NULL || totalRecs == NULL || csvData == NULL || strlen(csvData) < 1){
 		return -1;
 	}
@@ -81,7 +81,7 @@ int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs){
 		return -1;
 	}
 	
-	long recIdx = 0;
+	int recIdx = 0;
 	while ( recTkn != NULL ){
 		// convert tkn to record
 		recs = (Record**)realloc(recs, (recIdx +1 )* sizeof(Record*));
@@ -414,7 +414,7 @@ void printArray(Record** records, int len, char **dest)
 				//if (fieldIdx != (len-1)){
 				//	res = (char*)realloc(res, strlen(res) + 1 + strlen(record->fields[fieldIdx].data) + 1);
 				//} else {
-					res = (char*)realloc(res, strlen(res) + strlen(record->fields[fieldIdx].data) + 1);
+					res = (char*)realloc(res, strlen(res) + 1 + strlen(record->fields[fieldIdx].data) + 1);
 				//}
 				strcat(res, record->fields[fieldIdx].data);
 			} else {
@@ -424,7 +424,7 @@ void printArray(Record** records, int len, char **dest)
 				//if (fieldIdx != (len-1)){
 				//	res = (char*)realloc(res, strlen(res) + 1 + 2 + strlen(record->fields[fieldIdx].data) + 1);
 				//} else {
-					res = (char*)realloc(res, strlen(res) + 2 + strlen(record->fields[fieldIdx].data) + 1);
+					res = (char*)realloc(res, strlen(res) + 1 + 2 + strlen(record->fields[fieldIdx].data) + 1);
 				//}
 				strcat(res, "\"");
 				strcat(res, record->fields[fieldIdx].data);

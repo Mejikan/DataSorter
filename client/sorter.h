@@ -11,7 +11,7 @@ typedef struct conServArgs{
 	char* colName;
 	char* action;
 	int socketDesc;
-	char* collecId;
+	int collecId;
 
 }conServArgs;
 

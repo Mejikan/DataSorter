@@ -220,7 +220,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				
 				struct sockaddr_in server;
 				server.sin_family = AF_INET;
-				server.sin_port = htons(25565);
+				server.sin_port = htons(25566);
 				
 				//getaddrinfo
 
@@ -255,7 +255,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				args->colName = tarColName;
 				args->action = "sort";
 				args->socketDesc = sd;
-				args->collecId = "0";
+				args->collecId = clientId;
 				
 				
 				if ( (numTid+1) > size ){
@@ -335,7 +335,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(25565);
+	server.sin_port = htons(25566);
 	
 	//getaddrinfo
 
@@ -362,8 +362,8 @@ int recurseDir(recurseDirArgs *dirArgs){
 	/*created single socket*/
 	/*colName , collecId, action*/
 	
-	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ strlen("0")+strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n,", tarColName, "dump", "0");
+	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ 24 +strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", tarColName, "dump", clientId);
 			
 	 send(sdesc, message, strlen(message), 0);
 	
@@ -523,13 +523,14 @@ void clientToServer(conServArgs* args){
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
-	char* collecId = args->collecId;
+	int collecId = args->collecId;
 	//printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
 	char* escapedData = toEscStr(data);
-	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n", escapedData, colName, action, collecId);
+	
+	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+ 24+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", escapedData, colName, action, collecId);
 
 	
 	/*mutex lock*/
@@ -558,16 +559,23 @@ void clientToServer(conServArgs* args){
 	int i = 0;
 	char* msgId = NULL;
 	XMLDoc *doc = fromXmlStr(recMsg);
+	if (doc == NULL){
+		puts("doc is null!");
+	} else {
+		puts("not null doc");
+	}
 	while(i < doc->numOfChildren){
 		XMLDoc *child = doc->children[i];
-		if(strcasecmp(child->name, "collectionId")){
+		if(strcasecmp(child->name, "collectionId") == 0){
 			msgId = child->text;
+		} else {
+			printf("%s\n", child->name);
 		}
 		i++;
 	}
 	
-	
-	getClientId(msgId);
+	printf("id: %s\n", msgId);
+	getClientId(atoi(msgId));
 	
 	
 	/*should this be a destroy or unlock*/

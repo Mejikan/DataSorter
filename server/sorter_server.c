@@ -20,11 +20,12 @@ typedef
     }  
 ClientArgs;
 
-int port = 25565;
+int port = 25566;
 
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
     while (ptr != NULL){
+        puts("correct");
         if (pthread_mutex_trylock(&(ptr->recsLock)) == 0){ // able to acquire data lock
             if (ptr->numOfRecs == -1){ // empty collection
                 *dest = ptr;
@@ -55,6 +56,7 @@ int getEmptyCollection(Node **dest){
             pthread_mutex_unlock(nextLock);
         }
     }
+    puts("incorrect");
 }
 
 int findCollection(int id, Node **dest){
@@ -118,21 +120,21 @@ void runClient(ClientArgs *args){
 
     while (1){
         char *dataIn = NULL;
+        puts("reading socket....");
         int readRes = readSocket(socket, &dataIn);
         printf("READ %d: %s\n", readRes, dataIn);
         if (readRes == 0){
             break;
         } else if (readRes > 0){
-            puts(dataIn);
 
             ClientAction action = NONE;
             int collectionId = -1;
             char *data = NULL;
             char *tarColName = NULL;
 
-
             XMLDoc *doc = fromXmlStr(dataIn);
             if (doc != NULL && doc->numOfChildren > 0){
+                puts("converted to xml");
                 int i = 0;
                 while (i < doc->numOfChildren){
                     XMLDoc *child = doc->children[i];
@@ -153,78 +155,128 @@ void runClient(ClientArgs *args){
                     }
                     i++;
                 }
+            } else {
+                // handle error case
+                puts("failed to be converted to xml");
             }
 
             if (action == DISCONNECT){
                 break;
             } else if (action == SORT && data != NULL){ // ADD data
+                puts("sorting...");
                 data = fromEscStr(data);
+                puts("escaped data");
                 if (data != NULL){
+                    puts("data isnt null");
                     Record **parsedrecs = NULL;
-                    long numOfRecs = 0;
+                    int numOfRecs = 0;
 
                     if (parseDataIntoRecs(data, &parsedrecs, &numOfRecs) > -1 && numOfRecs > 0 && parsedrecs != NULL){
+                        puts("records parsed");
                         Node *collection = NULL;
 
                         if (collectionId == -1){ // create new collection
+                            puts("creating new collection");
                             getEmptyCollection(&collection);
-                            
+                            puts("got new collection!");
                             collection->numOfRecs = numOfRecs;
                             collection->recs = parsedrecs;
+                            printf("collection info: %d %d\n", collection->numOfRecs, collection->recs[(collection->numOfRecs)/2]->numOfCols );
                             pthread_mutex_unlock(&(collection->recsLock));
-                            // ~~~~WRITE COLLECTION ID TO CLIENT
-                            char payloadStr[strlen("<response><id></id></response>\r\n") + 24 + 1];
-                            sprintf(payloadStr, "<response><id>%d</id></response>\r\n", collection->id);
+
+                            // WRITE COLLECTION ID TO CLIENT
+                            char payloadStr[strlen("<response><collectionId></collectionId></response>\r\n") + 24 + 1];
+                            sprintf(payloadStr, "<response><collectionId>%d</collectionId></response>\r\n", collection->id);
                             if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
                                 perror("Failed to send.");
                             } else {
-                                puts("Message sent");
+                                printf("Message sent. Pass id #%d\n", collection->id);
                             }
 
                         } else { // find existing collection
+                            puts("finding existing collection");
                             if (findCollection(collectionId, &collection) < 0){
                                 puts("Cannot find requested collection.");
+
+                                // WRITE TO CLIENT
+                                char payloadStr[strlen("<response><id></id><error>Collection not found!</error></response>\r\n") + 24 + 1];
+                                sprintf(payloadStr, "<response><id>%d</id><error>Collection not found!</error></response>\r\n", collection->id);
+                                if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
+                                    perror("Failed to send.");
+                                } else {
+                                    puts("Message sent");
+                                }
+
                             } else {
+                                puts("merging collection");
                                 // merge collection
                                 pthread_mutex_lock(&(collection->recsLock));
                                 collection->recs = (Record**) realloc(collection->recs, (collection->numOfRecs) + numOfRecs);
                                 int j = 0;
                                 int i = collection->numOfRecs;
                                 collection->numOfRecs = (collection->numOfRecs) + numOfRecs;
+                                printf("ert: %d\n", (collection->numOfRecs));
                                 while (i < (collection->numOfRecs)){
                                     collection->recs[i] = parsedrecs[j];
                                     j++;
                                     i++;
                                 }
                                 pthread_mutex_unlock(&(collection->recsLock));
+                                
+                                // WRITE TO CLIENT
+                                char payloadStr[strlen("<response><id></id><collectionSize></collectionSize></response>\r\n") + 64 + 1];
+                                sprintf(payloadStr, "<response><id>%d</id><collectionSize>%d</collectionSize></response>\r\n", collection->id, i);
+                                if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
+                                    perror("Failed to send.");
+                                } else {
+                                    puts("Message sent");
+                                }
                             }
                         }
                     }
                 }
             } else if (action == DUMP && tarColName != NULL && collectionId > -1){ // SORT and DUMP
                 Node *collection = NULL;
-                if (findColumnIndex(tarColName) >= 0 && findCollection(collectionId, &collection) >= 0){
+                puts("dumping requested...");
+                int findStat = findCollection(collectionId, &collection);
+                printf("find stat: %d\n", findStat);
+                int tarColIdx = findColumnIndex(tarColName);
+                if (tarColIdx >= 0 && findStat >= 0){
+                    puts("cake");
                     pthread_mutex_lock(&(collection->recsLock));
+                    puts("locked!");
 
-                    mergeSortInt(collection->recs, collection->numOfRecs, collectionId);
+                    printf("Num of recs: %d\n", collection->numOfRecs);
+                    printf("test rec: %s\n", collection->recs[(collection->numOfRecs)/2]->fields[tarColIdx].data);
+
+                    puts("about to sort");
+                    mergeSortInt(collection->recs, collection->numOfRecs, tarColIdx);
+                    puts("mergesorted");
                     char *csvStr = NULL;
                     printArray(collection->recs, collection->numOfRecs, &csvStr);
-                    if (csvStr != NULL){
-                        char *payloadStrMetaFormat = "<response><data></data><error></error></response>";
-                        int payloadStrSize = strlen(csvStr) + strlen(payloadStrMetaFormat) + 1;
-                        char *payloadStr = (char*)malloc(payloadStrSize);
-                        sprintf(payloadStr, "<response><data>%s</data><error></error></response>", csvStr);
-
-                        send(socket, payloadStr, payloadStrSize, 0);
-
-                        free(payloadStr);
-                        free(csvStr);
-                    } else {
-                        puts("Data string is null!");
+                    puts("printed");
+                    if (csvStr == NULL){
+                        csvStr = (char*)malloc(1);
+                        csvStr[0] = 0;
                     }
 
+                    puts("dumping data...");
+
+                    char *payloadStrMetaFormat = "<response><data></data></response>";
+                    int payloadStrSize = strlen(csvStr) + strlen(payloadStrMetaFormat) + 1;
+                    puts("pie1");
+                    char *payloadStr = (char*)malloc(payloadStrSize);
+                    puts("pie2");
+                    sprintf(payloadStr, "<response><data>%s</data></response>", csvStr);
+                    puts("pie3");
+                    send(socket, payloadStr, payloadStrSize, 0);
+                    puts("pie4");
+                    free(payloadStr);
+                    free(csvStr);
+                    puts("pie5");
                     pthread_mutex_unlock(&(collection->recsLock));
                 }
+                puts("sdasdsdasdsad");
             }
         }
     }
@@ -267,6 +319,7 @@ int main(int argc, char **argv){
     collection->recs = NULL;
 	pthread_mutex_init(&(collection->nextLock), NULL);
     pthread_mutex_init(&(collection->recsLock), NULL);
+    collections = collection;
 
     int size = 10;
 	pthread_t* tid = (pthread_t*)malloc(size * sizeof(pthread_t));

@@ -23,7 +23,7 @@ typedef
 		int id;
 		struct Node *next;
 		pthread_mutex_t nextLock; // gain if modifying next
-		long numOfRecs; // if -1, then it is unused
+		int numOfRecs; // if -1, then it is unused
 		Record **recs;
 		pthread_mutex_t recsLock; // gain if modifying data(recs)
 	}
@@ -37,7 +37,7 @@ typedef struct _regFileArgs{
 }regFileArgs;
 
 int findColumnIndex(char *tarColName);
-int parseDataIntoRecs(char *csvData, Record ***dest, long *totalRecs);
+int parseDataIntoRecs(char *csvData, Record ***dest, int *totalRecs);
 short determineTypeofData(char *);
 void trim(char*);
 void mergeSortInt(Record**, int, int);			
