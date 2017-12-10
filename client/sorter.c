@@ -515,8 +515,9 @@ void clientToServer(conServArgs* args){
 	//printf("sd in func: %d\n", sd);
 	
 	/*change param to long formatted string*/
-	char* message = (char*)malloc(strlen(data)+strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n", data, colName, action, collecId);
+	char* escapedData = toEscStr(data);
+	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+ strlen(collecId)+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%s</collectionId></doc>\r\n", escapedData, colName, action, collecId);
 
 	
 	/*mutex lock*/
@@ -524,7 +525,6 @@ void clientToServer(conServArgs* args){
 	/*send message*/
 	
 	printf("********\n");
-	toEstStr(data);
 	int bytes = send(sd, message, strlen(message), 0);
 	
 	printf("++++++++\n");
