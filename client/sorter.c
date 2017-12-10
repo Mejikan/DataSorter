@@ -501,7 +501,7 @@ void clientToServer(conServArgs* args){
 	
 	printf("********\n");
 	int bytes = send(sd, message, strlen(message), 0);
-	close(sd);
+	
 	printf("++++++++\n");
 	printf("%d\n", bytes);
 
@@ -509,17 +509,16 @@ void clientToServer(conServArgs* args){
 	/*wait for response*/
 	int rec;
 	//printf("right before while\n");
-	while(1){
-		//printf("right before readSocket in while\n");
-		rec = readSocket(sd, &recMsg);
-		//printf("right after readSocket in while\n");
-		//printf("inside loop: %s\n", recMsg);
-		if(rec == -1){
-			printf("failed.\n");
-		}else{
-			break;
-		}
+	
+	//printf("right before readSocket in while\n");
+	rec = readSocket(sd, &recMsg);
+	//printf("right after readSocket in while\n");
+	//printf("inside loop: %s\n", recMsg);
+	if(rec == -1){
+		printf("failed.\n");
 	}
+	close(sd);
+	
 	printf("message: %s \n", recMsg);
 	//read id 
 	pthread_mutex_destroy(&action_lock);
