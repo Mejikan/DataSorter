@@ -20,8 +20,6 @@ typedef
     }  
 ClientArgs;
 
-int port = 25565;
-
 int getEmptyCollection(Node **dest){
     Node *ptr = collections;
     while (ptr != NULL){
@@ -291,6 +289,19 @@ void runClient(ClientArgs *args){
 }
 
 int main(int argc, char **argv){
+    short cmdArgsValid = 0;
+    if (argc >= 3){
+        if (strcmp("-p", argv[1])){
+            cmdArgsValid = 1;
+        }
+    }
+
+    if (cmdArgsValid == 1){
+        puts("Invalid command line arguments.");
+    }
+
+    int port = atoi(argv[2]);
+
     int serverSocket;
     struct sockaddr_in addr;
     int addrlen = sizeof(addr);
