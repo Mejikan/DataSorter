@@ -155,7 +155,7 @@ int main(int argc, char **argv){
 	//free(args);
 	free(outputFile);
 	pthread_mutex_destroy(&id_lock);
-	free(recMsg);
+	free(sortedCsvStr);
 	
 	free(inputDirTemp);
 	
@@ -484,7 +484,7 @@ int readSocket(int socket, char **dataPtr){
 void clientToServer(conServArgs* args){
 	//func that change struct into toString
 	char* data = readFile(args->dataToSort);
-	free(inFileName);
+	free(args->dataToSort);
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
