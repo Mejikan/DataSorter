@@ -28,6 +28,7 @@ int gNumOfTids = 0;
 int clientId = -1;
 
 char* hostName = NULL;
+int portNumber = 0;
 
 char* sortedCsvStr = NULL;
 
@@ -56,6 +57,8 @@ int main(int argc, char **argv){
 			i++;
 		}else if(strcmp(argv[i], "-h") == 0){		//added
 			hostName = argv[i+1];
+		}else if(strcmp(argv[i], "-p") == 0){
+			portNumber = atoi(argv[i+1]);
 		}
 		i++;
 	}
@@ -152,7 +155,9 @@ int main(int argc, char **argv){
 	//free(args);
 	free(outputFile);
 	pthread_mutex_destroy(&id_lock);
-
+	
+	free(inputDirTemp);
+	
 	return 0;
 }
 
@@ -178,6 +183,7 @@ int getClientId(int id){
 	pthread_mutex_unlock(&id_lock);
 	//do i destroy lock here??
 }
+
 
 int recurseDir(recurseDirArgs *dirArgs){
 	
@@ -223,7 +229,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 				
 				struct sockaddr_in server;
 				server.sin_family = AF_INET;
-				server.sin_port = htons(25565);
+				server.sin_port = htons(portNumber);
 				
 				//getaddrinfo
 
@@ -338,7 +344,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
-	server.sin_port = htons(25565);
+	server.sin_port = htons(portNumber);
 	
 	//getaddrinfo
 
@@ -392,6 +398,8 @@ int recurseDir(recurseDirArgs *dirArgs){
 	//printf("[%s] All threads joined!\n", inputDir);
 	free(tid);
 	free(inputDir);
+	free(inFileName);
+	free(dataIn);
 	//free(origDptr);
 	closedir(dptr);
 	return 1;
@@ -412,71 +420,7 @@ void addTid(pthread_t* tids, int numOfTids){
 	pthread_mutex_unlock(&tid_lock);
 }
 
-char *readCmdArgs(int argc, char** argv){
-	short bufferSize = 1;
-	char *buffer;
-	buffer = (char*) malloc(bufferSize * sizeof(char)); // reserve 16 chars of initial space
-	if (buffer == NULL){
-		return NULL; // failed to allocate memory
-	}
-	buffer[0] = '\0';
 
-	short i0 = 1;
-	if (i0 < argc){
-		while (i0 < argc){
-			short nameLenDiff = bufferSize - (bufferSize + strlen(argv[i0]));
-			if (i0 > 1){
-				nameLenDiff-=1;
-			}
-			if (nameLenDiff < 0){ // allocate more memory
-				nameLenDiff *= -1;
-				//printf("new size: %d \n", bufferSize + nameLenDiff);
-				buffer = realloc(buffer, bufferSize + nameLenDiff);
-				bufferSize += nameLenDiff;
-				if (buffer == NULL){
-					return NULL; // failed to allocate memory
-				}
-			}
-
-			if (i0 > 1){
-				strcat(buffer, " ");
-			}
-			strcat(buffer, argv[i0]);
-			//printf("%d %lu %s\n", bufferSize, strlen(buffer), buffer);
-			i0++;
-		}
-	} else {
-		buffer[0] = '\0';
-	}
-
-	return buffer;
-}
-
-char *readSTDIN(){
-	int contentSize = 1;
-	char *content = (char*) malloc(contentSize * sizeof(char));
-	if (content == NULL){
-		return NULL;
-	}
-	char buffer[1024];
-	buffer[0] = '\0';
-	content[0] = '\0';
-	
-	while ( fgets(buffer, 1024, stdin) != NULL ){
-		int contSizeDiff = contentSize - (contentSize + strlen(buffer) + 1);
-		if (contSizeDiff < 0){ // allocate more memory
-		  contSizeDiff *= -1;
-		  content = realloc(content, contentSize + contSizeDiff);
-		  contentSize += contSizeDiff;
-		  if (content == NULL){
-			return NULL; // failed to allocate memory
-		  }
-		}
-		strcat(content, buffer);
-	}
-
-	return content;
-}
 
 void printArray(Record** records, int len, FILE* fptr){
     int recIdx = 0;
@@ -595,8 +539,5 @@ void clientToServer(conServArgs* args){
 	getClientId(atoi(msgId));
 	
 	
-	/*should this be a destroy or unlock*/
 	
 }
-
-
