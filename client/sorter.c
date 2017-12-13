@@ -28,7 +28,7 @@ int gNumOfTids = 0;
 int clientId = -1;
 
 char* hostName = NULL;
-int portNumber = 0;
+int portNumber = -1;
 
 char* sortedCsvStr = NULL;
 
@@ -45,6 +45,7 @@ int main(int argc, char **argv){
 		return -1;
 	}
 	int i = 1; 
+	
 	while(i < argc){
 		if(strcmp(argv[i], "-c") == 0){
 			tarColName = argv[i+1];
@@ -63,6 +64,10 @@ int main(int argc, char **argv){
 		i++;
 	}
 
+	if(hostName == NULL || portNumber == -1 || tarColName == NULL){
+		return -1;
+	}
+	
 	printf("host name: %s\n",hostName);
 	
 	if(inputDir == NULL){
