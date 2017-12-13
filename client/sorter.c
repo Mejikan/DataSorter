@@ -155,6 +155,7 @@ int main(int argc, char **argv){
 	//free(args);
 	free(outputFile);
 	pthread_mutex_destroy(&id_lock);
+	free(recMsg);
 	
 	free(inputDirTemp);
 	
@@ -398,8 +399,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	//printf("[%s] All threads joined!\n", inputDir);
 	free(tid);
 	free(inputDir);
-	free(inFileName);
-	free(dataIn);
+	
 	//free(origDptr);
 	closedir(dptr);
 	return 1;
@@ -484,6 +484,7 @@ int readSocket(int socket, char **dataPtr){
 void clientToServer(conServArgs* args){
 	//func that change struct into toString
 	char* data = readFile(args->dataToSort);
+	free(inFileName);
 	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
@@ -537,7 +538,5 @@ void clientToServer(conServArgs* args){
 	
 	printf("id: %s\n", msgId);
 	getClientId(atoi(msgId));
-	
-	
-	
+
 }
