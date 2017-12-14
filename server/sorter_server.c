@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "sorter_server.h"
 #include "xmlparse.h"
@@ -351,6 +352,10 @@ int main(int argc, char **argv){
             return -1;
         } else {
             printf("Client connected! %d\n", numTid);
+            char ipstr[INET_ADDRSTRLEN];
+            inet_ntop( AF_INET, &(addr.sin_addr), ipstr, INET_ADDRSTRLEN );
+            printf("IP connected: %s\n", ipstr);
+
             ClientArgs *args = (ClientArgs*) malloc(sizeof(ClientArgs));
             args->socket = clientSocket;
 
