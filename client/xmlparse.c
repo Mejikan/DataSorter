@@ -79,7 +79,8 @@ char *fromEscStr(char *src){
  */
 XMLDoc* fromXmlStrRec(char *src){
 
-    XMLDoc **docs = (XMLDoc**)malloc(1 * sizeof(XMLDoc*));
+    //XMLDoc **docs = (XMLDoc**)malloc(1 * sizeof(XMLDoc*));
+    XMLDoc **docs = NULL;
     int numOfDocs = 0;
 
     char *search = src;
@@ -111,6 +112,7 @@ XMLDoc* fromXmlStrRec(char *src){
 
                 // check if field names are equal
                 if (strcmp(fieldName, fieldName2) == 0){
+                    free(fieldName2);
                     break;
                 } else {
                     free(fieldName2);
@@ -139,13 +141,17 @@ XMLDoc* fromXmlStrRec(char *src){
                     doc->children = NULL;
                     doc->numOfChildren = 0;
 
-                    free(content);
                 } else {
                     doc = sub;
                 }
+                free(content);
                 doc->name = fieldName;
-
-                docs = (XMLDoc**)realloc(docs, (numOfDocs + 1) * sizeof(XMLDoc*));
+                
+                if (numOfDocs > 0){
+                    docs = (XMLDoc**)realloc(docs, (numOfDocs + 1) * sizeof(XMLDoc*));
+                } else if (numOfDocs == 0){
+                    docs = (XMLDoc**)malloc(1 * sizeof(XMLDoc*));
+                }
                 docs[numOfDocs] = doc;
                 numOfDocs = numOfDocs + 1;
 
@@ -155,7 +161,7 @@ XMLDoc* fromXmlStrRec(char *src){
     }
 
 
-    if (numOfDocs == 0){
+    if (docs == NULL){
         free(docs);
         return NULL;
     } else {
@@ -175,6 +181,8 @@ XMLDoc *fromXmlStr(char *src){
         return NULL;
     }
     XMLDoc *doc = recurDoc->children[0];
+    printf("num of children in xml: %d, %s, %s\n", recurDoc->numOfChildren, recurDoc->name, recurDoc->text);
+    free(recurDoc->children);
     free(recurDoc);
     return doc;
 }
@@ -214,4 +222,24 @@ char *toXMLStr(XMLDoc *doc){
     } else {
         return NULL;
     }
+}
+
+void freeXMLDoc(XMLDoc *doc){
+	if (doc == NULL){
+		return;
+	} else if ((doc->children) != NULL){
+		int i = 0;
+		while (i < (doc->numOfChildren)){
+			freeXMLDoc(doc->children[i]);
+			i++;
+		}
+        free(doc->children);
+	}
+
+	if ((doc->text) != NULL){
+		free((doc->text));
+	}
+
+	free((doc->name));
+	free(doc);
 }

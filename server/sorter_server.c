@@ -291,13 +291,14 @@ void runClient(ClientArgs *args){
 int main(int argc, char **argv){
     short cmdArgsValid = 0;
     if (argc >= 3){
-        if (strcmp("-p", argv[1])){
+        if (strcmp("-p", argv[1]) == 0){
             cmdArgsValid = 1;
         }
     }
 
-    if (cmdArgsValid == 1){
+    if (cmdArgsValid == 0){
         puts("Invalid command line arguments.");
+        return -1;
     }
 
     int port = atoi(argv[2]);

@@ -35,3 +35,4 @@ XMLDoc *fromXmlStr(char *src);
  * Converts a XML document C-object into its string representation.
  */
 char *toXMLStr(XMLDoc *doc);
+void freeXMLDoc(XMLDoc *doc);

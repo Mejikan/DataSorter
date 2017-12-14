@@ -14,8 +14,7 @@
 #include "xmlparse.h"
 
 
-	
-char *outputFile;
+FILE *outFilePtr;
 pthread_mutex_t rec_lock;
 pthread_mutex_t tid_lock;
 pthread_mutex_t action_lock;
@@ -29,8 +28,6 @@ int clientId = -1;
 
 char* hostName = NULL;
 int portNumber = -1;
-
-char* sortedCsvStr = NULL;
 
 int main(int argc, char **argv){
 	// --- READ CMD ARGS INTO BUFFER --- //
@@ -65,10 +62,11 @@ int main(int argc, char **argv){
 	}
 
 	if(hostName == NULL || portNumber == -1 || tarColName == NULL){
+		puts("Missing command line arguments.");
 		return -1;
 	}
 	
-	printf("host name: %s\n",hostName);
+	//printf("host name: %s\n",hostName);
 	
 	if(inputDir == NULL){
 		inputDir = ".";
@@ -119,8 +117,9 @@ int main(int argc, char **argv){
 	sprintf(inputDirTemp, "%s", inputDir);
 	inputDir = inputDirTemp;
 
-	outputFile = (char*)malloc(strlen(outputDir) + strlen("/AllFiles-sorted-") + strlen(tarColName) + strlen(".csv") + 1);
+	char *outputFile = (char*)malloc(strlen(outputDir) + strlen("/AllFiles-sorted-") + strlen(tarColName) + strlen(".csv") + 1);
 	sprintf(outputFile, "%s%s%s%s", outputDir, "/AllFiles-sorted-", tarColName, ".csv");
+	outFilePtr = fopen(outputFile, "w+");
 
 	pthread_mutex_init(&id_lock, NULL);
 
@@ -137,13 +136,8 @@ int main(int argc, char **argv){
 	pthread_mutex_destroy(&rec_lock);
 	pthread_mutex_destroy(&tid_lock);
 
-	puts("opening fiel");
-	FILE* fptr = fopen(outputFile, "w+");
-	puts("writing to file");
-	fprintf(fptr, "%s", sortedCsvStr);
-	puts("closing file");
-	fclose(fptr);
-	
+	fclose(outFilePtr);
+	free(outputFile);
 
 	/*printf("TIDS of all child threads: ");
 	int j = 0;
@@ -158,13 +152,15 @@ int main(int argc, char **argv){
 	*/
 
 	//free(args);
-	free(outputFile);
 	pthread_mutex_destroy(&id_lock);
-	free(sortedCsvStr);
 	
-	free(inputDirTemp);
+	//free(inputDirTemp);
 	
 	return 0;
+}
+
+int writeDataToFile(char *sortedCsvData){
+	fprintf(outFilePtr, "%s", sortedCsvData);
 }
 
 int mergeDataLinear(Record** recs, int numOfRecs, int columnName){
@@ -192,8 +188,6 @@ int getClientId(int id){
 
 
 int recurseDir(recurseDirArgs *dirArgs){
-	
-
 
 	char *inputDir = dirArgs->inputDir;
 	char *outputDir = dirArgs->outputDir;
@@ -212,12 +206,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 		printf("error\n");
 		return 0;
 	}
-	
-	 
-	//printf("CONNECTED \n");
-	
-	
-	//int counter = 0;
+
 	while((entry = readdir(dptr)) != NULL){
 		if(entry->d_type == DT_REG){ // checks if entry found is a regular file
 			
@@ -381,6 +370,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", tarColName, "dump", clientId);
 			
 	send(sdesc, message, strlen(message), 0);
+	free(message);
 
 	char* recMsg = NULL;
 	
@@ -394,12 +384,11 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	char* msgId = NULL;
 	XMLDoc *doc = fromXmlStr(recMsg);
+	free(recMsg);
 	XMLDoc *child = doc->children[0];
 	
-	sortedCsvStr = child->text;
-	
-	
-	
+	writeDataToFile(child->text);
+	freeXMLDoc(doc);
 	
 	//printf("[%s] All threads joined!\n", inputDir);
 	free(tid);
@@ -424,8 +413,6 @@ void addTid(pthread_t* tids, int numOfTids){
 
 	pthread_mutex_unlock(&tid_lock);
 }
-
-
 
 void printArray(Record** records, int len, FILE* fptr){
     int recIdx = 0;
@@ -498,39 +485,32 @@ void clientToServer(conServArgs* args){
 	
 	/*change param to long formatted string*/
 	char* escapedData = toEscStr(data);
+	free(data);
 	
-	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+ 24+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
-	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", escapedData, colName, action, collecId);
+	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+
+		24+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
+	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n",
+		escapedData, colName, action, collecId);
+	free(escapedData);
 
-	
-	/*mutex lock*/
-	/*send message*/
-	
-	printf("********\n");
 	int bytes = send(sd, message, strlen(message), 0);
-	
-	printf("++++++++\n");
-	printf("%d\n", bytes);
+	free(message);
 
 	char* recMsg = NULL;
 	
 	int rec;
-	
 	
 	rec = readSocket(sd, &recMsg);
 	if(rec == -1){
 		printf("failed.\n");
 	}
 	close(sd);
+	free(args);
 	
 	int i = 0;
 	char* msgId = NULL;
 	XMLDoc *doc = fromXmlStr(recMsg);
-	if (doc == NULL){
-		puts("doc is null!");
-	} else {
-		puts("not null doc");
-	}
+	free(recMsg);
 	while(i < doc->numOfChildren){
 		XMLDoc *child = doc->children[i];
 		if(strcasecmp(child->name, "collectionId") == 0){
@@ -543,5 +523,6 @@ void clientToServer(conServArgs* args){
 	
 	printf("id: %s\n", msgId);
 	getClientId(atoi(msgId));
+	freeXMLDoc(doc);
 
 }
