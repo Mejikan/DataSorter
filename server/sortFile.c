@@ -90,6 +90,7 @@ int parseDataIntoRecs(char *csvData, Record ***dest, int *totalRecs){
 		recTkn = strtok_r(NULL, "\n", &inCsvStr);
 		recIdx++;
 	}
+	
 	*totalRecs = recIdx;
 	*dest = recs;
 
@@ -401,6 +402,7 @@ void printArray(Record** records, int len, char **dest)
 		Record *record = records[recIdx];
 		int fieldIdx = 0;
 		while (fieldIdx < record->numOfCols){
+			//printf("[DEBUG] reci: %d, fieldi: %d, fieldv: %s\n", recIdx, fieldIdx, record->fields[fieldIdx].data);
 			if (fieldIdx != 0){
 				//printf(",");
 				//fprintf(fptr, ",");

@@ -273,6 +273,7 @@ int recurseDir(recurseDirArgs *dirArgs){
 	XMLDoc *child = doc->children[0];
 	
 	writeDataToFile(child->text);
+	
 	freeXMLDoc(doc);
 	
 	//printf("[%s] All threads joined!\n", inputDir);
@@ -331,12 +332,12 @@ int readSocket(int socket, char **dataPtr){
         } else {
             int dataInLen = bytes + strlen(dataIn) + 1;
             dataIn = (char*) realloc(dataIn, dataInLen);
-            strncat(dataIn, buff, bytes);
+            strncat(dataIn, buff, bytes);			
             char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
-            if ( (dataInLen - 1) >= strlen(delimTerm) && strcmp(delimPtr, delimTerm) == 0 ){
-                *dataPtr = dataIn;
-                dataPtr[dataInLen - strlen(delimTerm) - 1] = 0;
-                return strlen(dataIn) - strlen(delimTerm);
+            if ( (dataInLen - 1) >= strlen(delimTerm) && strcmp(delimPtr, delimTerm) == 0 ){				
+                dataIn[dataInLen - strlen(delimTerm) -1] = 0;
+                *(dataPtr) = dataIn;
+                return strlen(dataIn);
             }
             memset(&buff, 0, 1024);
 			buff[0] = 0;

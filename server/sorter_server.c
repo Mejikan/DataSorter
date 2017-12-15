@@ -91,7 +91,7 @@ int readSocket(int socket, char **dataPtr){
     while (1){
         short bytes = recv(socket, buff, 1023, 0);
         if (bytes < 0){
-            perror("Failed to read from client");
+            perror("Failed to read socket");
             free(dataIn);
             return -1;
         } else if (bytes == 0){ //EOF (end of stream)
@@ -100,12 +100,12 @@ int readSocket(int socket, char **dataPtr){
         } else {
             int dataInLen = bytes + strlen(dataIn) + 1;
             dataIn = (char*) realloc(dataIn, dataInLen);
-            strncat(dataIn, buff, bytes);
+            strncat(dataIn, buff, bytes);			
             char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
-            if ( (dataInLen - 1) >= strlen(delimTerm) && strcmp(delimPtr, delimTerm) == 0 ){
-                *dataPtr = dataIn;
-                dataPtr[dataInLen - strlen(delimTerm) - 1] = 0;
-                return strlen(dataIn) - strlen(delimTerm);
+            if ( (dataInLen - 1) >= strlen(delimTerm) && strcmp(delimPtr, delimTerm) == 0 ){				
+                dataIn[dataInLen - strlen(delimTerm) -1] = 0;
+                *(dataPtr) = dataIn;
+                return strlen(dataIn);
             }
             memset(&buff, 0, 1024);
 			buff[0] = 0;
@@ -119,7 +119,7 @@ void runClient(ClientArgs *args){
     while (1){
         char *dataIn = NULL;
         int readRes = readSocket(socket, &dataIn);
-        printf("READ from client %d: %s\n", readRes, dataIn);
+        //printf("READ from client %d: %s\n", readRes, dataIn);
         if (readRes == 0){
             break;
         } else if (readRes > 0){
@@ -154,14 +154,11 @@ void runClient(ClientArgs *args){
                 }
             } else {
                 char errMsg[] = "<response><error>Empty request!</error></response>\r\n";
-                //errMsg[0] = 0;
-                //char payloadStr[strlen("<response><collectionId></collectionId></response>\r\n") + 24 + 1];
-                //sprintf(payloadStr, "<response><collectionId>%d</collectionId></response>\r\n", collection->id);
 
                 if (send(socket, errMsg, strlen(errMsg), 0) < 0){
                     perror("Failed to send.");
                 } else {
-                    puts("Message sent");
+                    //puts("Message sent");
                 }
 
                 // handle error case
@@ -171,7 +168,7 @@ void runClient(ClientArgs *args){
             if (action == DISCONNECT){
                 break;
             } else if (action == SORT && data != NULL){ // ADD data
-                puts("sorting...");
+                //puts("sorting...");
                 data = fromEscStr(data);
                 
                 if (data != NULL){
@@ -187,7 +184,7 @@ void runClient(ClientArgs *args){
                             getEmptyCollection(&collection);
                             collection->numOfRecs = numOfRecs;
                             collection->recs = parsedrecs;
-                            printf("collection info: %d %d\n", collection->numOfRecs, collection->recs[(collection->numOfRecs)/2]->numOfCols );
+                            
                             pthread_mutex_unlock(&(collection->recsLock));
 
                             // WRITE COLLECTION ID TO CLIENT
@@ -196,7 +193,7 @@ void runClient(ClientArgs *args){
                             if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
                                 perror("Failed to send.");
                             } else {
-                                printf("Message sent. Pass id #%d\n", collection->id);
+                                //printf("Message sent. Pass id #%d\n", collection->id);
                             }
 
                         } else { // find existing collection
@@ -210,23 +207,34 @@ void runClient(ClientArgs *args){
                                 if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
                                     perror("Failed to send.");
                                 } else {
-                                    puts("Message sent");
+                                    //puts("Message sent");
                                 }
 
                             } else {
-                                puts("merging collection");
+                                
                                 // merge collection
                                 pthread_mutex_lock(&(collection->recsLock));
-                                collection->recs = (Record**) realloc(collection->recs, (collection->numOfRecs) + numOfRecs);
-                                int j = 0;
-                                int i = collection->numOfRecs;
-                                collection->numOfRecs = (collection->numOfRecs) + numOfRecs;
-                                printf("ert: %d\n", (collection->numOfRecs));
-                                while (i < (collection->numOfRecs)){
-                                    collection->recs[i] = parsedrecs[j];
-                                    j++;
+                                
+                                Record **colRecs = collection->recs;
+                                int colNumOfRecs = collection->numOfRecs;
+                                //colRecs = (Record**) realloc(colRecs, colNumOfRecs + numOfRecs);
+                                collection->recs = (Record**) malloc(colNumOfRecs + numOfRecs);
+                                int i = 0;
+                                //colNumOfRecs = colNumOfRecs + numOfRecs;
+                                while (i < colNumOfRecs){
+                                    collection->recs[i] = colRecs[i];
                                     i++;
                                 }
+                                int j = 0;
+                                while (j < numOfRecs){
+                                    collection->recs[i] = parsedrecs[j];
+                                    i++;
+                                    j++;
+                                }
+                                colNumOfRecs = colNumOfRecs + numOfRecs;
+                                collection->numOfRecs = colNumOfRecs;
+
+                                free(colRecs);
                                 pthread_mutex_unlock(&(collection->recsLock));
                                 
                                 // WRITE TO CLIENT
@@ -235,7 +243,7 @@ void runClient(ClientArgs *args){
                                 if (send(socket, payloadStr, strlen(payloadStr), 0) < 0){
                                     perror("Failed to send.");
                                 } else {
-                                    puts("Message sent");
+                                    //puts("Message sent");
                                 }
                             }
                         }
@@ -250,7 +258,6 @@ void runClient(ClientArgs *args){
                 if (tarColIdx >= 0 && findStat >= 0){
                     
                     pthread_mutex_lock(&(collection->recsLock));
-                    printf("Merging metadata: %d %d\n.", collection->numOfRecs, tarColIdx);
                     mergeSortInt(collection->recs, collection->numOfRecs, tarColIdx);
                     
                     char *csvStr = NULL;
@@ -282,7 +289,7 @@ void runClient(ClientArgs *args){
         }
     }
 
-    printf("Closed socket connection %d\n", socket);
+    //printf("Closed socket connection %d\n", socket);
     close(socket);
 }
 
