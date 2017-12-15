@@ -1,14 +1,11 @@
 
 
 typedef struct recurseDirArgs{
-	char* tarColName;
 	char* inputDir;
-	char* outputDir;
 }recurseDirArgs;
 
 typedef struct conServArgs{
 	char* dataToSort;
-	char* colName;
 	char* action;
 	int socketDesc;
 	int collecId;

@@ -181,7 +181,7 @@ XMLDoc *fromXmlStr(char *src){
         return NULL;
     }
     XMLDoc *doc = recurDoc->children[0];
-    printf("num of children in xml: %d, %s, %s\n", recurDoc->numOfChildren, recurDoc->name, recurDoc->text);
+    //printf("num of children in xml: %d, %s, %s\n", recurDoc->numOfChildren, recurDoc->name, recurDoc->text);
     free(recurDoc->children);
     free(recurDoc);
     return doc;

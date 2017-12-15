@@ -15,26 +15,18 @@
 
 
 FILE *outFilePtr;
-pthread_mutex_t rec_lock;
-pthread_mutex_t tid_lock;
 pthread_mutex_t action_lock;
 pthread_mutex_t id_lock;
 
-Record** gRecs;
-int gNumOfRecs = 0;
-pthread_t* gTid;
-int gNumOfTids = 0;
 int clientId = -1;
 
 char* hostName = NULL;
 int portNumber = -1;
+char* tarColName = NULL;
 
 int main(int argc, char **argv){
-	// --- READ CMD ARGS INTO BUFFER --- //
-	
 	char* inputDir = NULL;
 	char* outputDir = NULL;
-	char* tarColName = NULL;
 
 
 	if(argc < 3){ // not enough args
@@ -66,8 +58,6 @@ int main(int argc, char **argv){
 		return -1;
 	}
 	
-	//printf("host name: %s\n",hostName);
-	
 	if(inputDir == NULL){
 		inputDir = ".";
 	} else {
@@ -90,25 +80,6 @@ int main(int argc, char **argv){
 			closedir(oDir);
 		}
 	}
-	//printf("%s\n",inputDir);
-
-	//int initialPid = getpid();
-	//printf("Initial PID: %d\n", initialPid);
-	//printf("PIDS of all child processes: ");
-	//fflush(stdout);
-
-
-
-	//int numpid = recurseDir(tarColName, inputDir, outputDir);
-/*
-	if (getpid() == initialPid){ // initial process
-		printf("\nTotal number of processes: %d\n", (numpid + 1));
-		fflush(stdout);
-		return 0;
-	} else { // not initial process
-		return numpid;
-	}
-	*/
 
 	printf("Initial PID: %d\n", getpid());
 
@@ -124,38 +95,14 @@ int main(int argc, char **argv){
 	pthread_mutex_init(&id_lock, NULL);
 
 	recurseDirArgs *args = (recurseDirArgs*)malloc(sizeof(recurseDirArgs));
-	args->tarColName = tarColName;
 	args->inputDir = inputDir;
-	args->outputDir = outputDir;
 
-	gRecs = (Record**)malloc(1 * sizeof(Record*));
-	gTid = (pthread_t*)malloc(1 * sizeof(pthread_t));
-	pthread_mutex_init(&rec_lock, NULL);
-	pthread_mutex_init(&tid_lock, NULL);
 	recurseDir(args);
-	pthread_mutex_destroy(&rec_lock);
-	pthread_mutex_destroy(&tid_lock);
 
 	fclose(outFilePtr);
 	free(outputFile);
 
-	/*printf("TIDS of all child threads: ");
-	int j = 0;
-	while (j < gNumOfTids){
-		printf("%lu", gTid[j]);
-		if (j != (gNumOfTids - 1)){
-			printf(",");
-		}
-		j++;
-	}
-	printf("\nTotal number of threads: %d\n", gNumOfTids);
-	*/
-
-	//free(args);
 	pthread_mutex_destroy(&id_lock);
-	
-	//free(inputDirTemp);
-	
 	return 0;
 }
 
@@ -163,39 +110,13 @@ int writeDataToFile(char *sortedCsvData){
 	fprintf(outFilePtr, "%s", sortedCsvData);
 }
 
-int mergeDataLinear(Record** recs, int numOfRecs, int columnName){
-	// Merge recs with gRecs 
-	pthread_mutex_lock(&rec_lock);
-
-	Record** newGRecs = (Record**)malloc( (gNumOfRecs + numOfRecs) * sizeof(Record*) );
-	mergeInt(gRecs, recs, newGRecs, gNumOfRecs, numOfRecs, columnName);
-	free(gRecs);
-	gRecs = newGRecs;
-	gNumOfRecs = (gNumOfRecs + numOfRecs);
-
-	pthread_mutex_unlock(&rec_lock);
-	return 3;
-}
-
-int getClientId(int id){
-	pthread_mutex_lock(&id_lock);
-	if(clientId == -1){
-		clientId = id;
-	}
-	pthread_mutex_unlock(&id_lock);
-	//do i destroy lock here??
-}
-
 
 int recurseDir(recurseDirArgs *dirArgs){
 
 	char *inputDir = dirArgs->inputDir;
-	char *outputDir = dirArgs->outputDir;
-	char *tarColName = dirArgs->tarColName;
 	free(dirArgs);
 
 	DIR* dptr = (DIR*)opendir(inputDir);
-	//DIR* origDptr = dptr;
 	struct dirent* entry;
 	
 	int size = 10;
@@ -227,14 +148,12 @@ int recurseDir(recurseDirArgs *dirArgs){
 				server.sin_port = htons(portNumber);
 				
 				//getaddrinfo
-
 				struct hostent *hp;
-				char buffer[1024];
 
 				hp = gethostbyname(hostName);
 
 				if(hp == 0){
-					perror("gethostbyname failed \n");
+					perror("Gethostbyname failed \n");
 					exit(1);
 				}
 
@@ -243,23 +162,24 @@ int recurseDir(recurseDirArgs *dirArgs){
 				int connectStatus = connect(sd, (struct sockaddr *)&server, sizeof(server));
 				
 				if(connectStatus < 0){
-					printf("ERROR, connect faield\n");
+					printf("Error, connect failed.\n");
 					exit(0);
 				}
-					
 	
 				len = strlen(inputDir) + 1 + strlen(entry->d_name) + 1;
-				//char inFileName[strlen(inputDir) + 1 + strlen(entry->d_name) + 1]; // in file path
-				//sprintf(inFileName, "%s/%s", inputDir, entry->d_name);
 				char *inFileName = (char*)malloc(len);
 				sprintf(inFileName, "%s/%s", inputDir, entry->d_name);
 
 				conServArgs* args = (conServArgs*) malloc(sizeof(conServArgs));
 				args->dataToSort = inFileName;
-				args->colName = tarColName;
 				args->action = "sort";
 				args->socketDesc = sd;
+
+				pthread_mutex_lock(&id_lock);
 				args->collecId = clientId;
+				if(clientId != -1){
+					pthread_mutex_unlock(&id_lock);
+				}
 				
 				
 				if ( (numTid+1) > size ){
@@ -269,26 +189,17 @@ int recurseDir(recurseDirArgs *dirArgs){
 
 				pthread_create(&tid[numTid], NULL, (void*)clientToServer, args);
 				numTid++;
-				
-				/*else{
-					printf("%d,", pid);
-					fflush(stdout);
-					numPid++;
-				}*/
 			}
 		}
 		else if(entry->d_type == DT_DIR){ // checks if entry found is a directory
 			if( !(strcmp(entry->d_name, ".") == 0) && !(strcmp(entry->d_name, "..") == 0) ){	
 				int len = strlen(inputDir) + 1 + strlen(entry->d_name) + 1;
-				//char dirPath[strlen(inputDir) + 1 + strlen(entry->d_name) + 1]; // entry's directory path
-				//sprintf(dirPath, "%s/%s", inputDir, entry->d_name);
+
 				char *dirPath = (char*)malloc(len);
 				sprintf(dirPath, "%s/%s", inputDir, entry->d_name);
 
 				recurseDirArgs *args = (recurseDirArgs*)malloc(sizeof(recurseDirArgs));
-				args->tarColName = tarColName;
 				args->inputDir = dirPath;
-				args->outputDir = outputDir;
 
 				if ( (numTid+1) > size ){
 					size = (size + 10);
@@ -297,39 +208,16 @@ int recurseDir(recurseDirArgs *dirArgs){
 
 				pthread_create(&tid[numTid], NULL, (void*)recurseDir, args);
 				numTid++;
-
-				/*
-				int pid = fork();
-				if(pid == 0){
-					numPid = recurseDir(tarColName, dirPath, outputDir);
-					//free(origDptr);
-					closedir(dptr);
-					return numPid;
-				}
-				else{
-					printf("%d,", pid);
-					fflush(stdout);
-					numPid++;
-				}*/
 			} 
 		}
 	}
 	
 	int i = 0;
 	while(i < numTid){
-		/*int retVal = 0;
-		wait(&retVal);
-		if (WIFEXITED(retVal)){
-			totalNumPid += WEXITSTATUS(retVal);
-			i++;
-		}*/
-		//int retVal = 0;
-		//int *retValPtr = &retVal;
+		puts("Thread joined!");
 		pthread_join(tid[i], NULL);
-		//printf("return value: %d", retVal);
 		i++;
 	}
-	addTid(tid, numTid);
 
 	int sdesc = socket(AF_INET, SOCK_STREAM, 0);
 	if(sdesc < 0){
@@ -344,7 +232,6 @@ int recurseDir(recurseDirArgs *dirArgs){
 	//getaddrinfo
 
 	struct hostent *hp;
-	char buffer[1024];
 
 	hp = gethostbyname(hostName);
 
@@ -353,13 +240,12 @@ int recurseDir(recurseDirArgs *dirArgs){
 		exit(1);
 	}
 
-
 	memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
 	
 	int connectStatus = connect(sdesc, (struct sockaddr *)&server, sizeof(server));
 				
 	if(connectStatus < 0){
-		printf("ERROR, connect faield\n");
+		perror("Failed to connect to server");
 		exit(0);
 	}
 	
@@ -369,16 +255,15 @@ int recurseDir(recurseDirArgs *dirArgs){
 	char* message = (char*)malloc(strlen(tarColName)+strlen("dump")+ 24 +strlen("<doc><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
 	sprintf(message, "<doc><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n", tarColName, "dump", clientId);
 			
+	printf("Requesting dump from server for collection id %d.\n", clientId);
 	send(sdesc, message, strlen(message), 0);
 	free(message);
-
 	char* recMsg = NULL;
-	
 
 	int rec;
 	rec = readSocket(sdesc, &recMsg);
 	if(rec == -1){
-		printf("failed.\n");
+		perror("Failed to read socket");
 	}
 	close(sdesc);
 	
@@ -398,20 +283,6 @@ int recurseDir(recurseDirArgs *dirArgs){
 	closedir(dptr);
 	return 1;
 	
-}
-
-void addTid(pthread_t* tids, int numOfTids){
-	pthread_mutex_lock(&tid_lock);
-	
-	gTid = (pthread_t*)realloc( gTid, (gNumOfTids + numOfTids) * sizeof(pthread_t) );
-	int i = 0;
-	while (i < numOfTids){
-		gTid[gNumOfTids + i] = tids[i];
-		i++;
-	}
-	gNumOfTids = (gNumOfTids + numOfTids);
-
-	pthread_mutex_unlock(&tid_lock);
 }
 
 void printArray(Record** records, int len, FILE* fptr){
@@ -446,11 +317,12 @@ int readSocket(int socket, char **dataPtr){
     dataIn[0] = 0;
     char buff[1024];
     memset(&buff, 0, 1024);
+	buff[0] = 0;
 
     while (1){
         short bytes = recv(socket, buff, 1023, 0);
         if (bytes < 0){
-            perror("Failed to read from client");
+            perror("Failed to read socket");
             free(dataIn);
             return -1;
         } else if (bytes == 0){ //EOF (end of stream)
@@ -459,15 +331,15 @@ int readSocket(int socket, char **dataPtr){
         } else {
             int dataInLen = bytes + strlen(dataIn) + 1;
             dataIn = (char*) realloc(dataIn, dataInLen);
-            strcat(dataIn, buff);
+            strncat(dataIn, buff, bytes);
             char *delimPtr = dataIn + dataInLen - strlen(delimTerm) - 1;
-            if ( strcmp(delimPtr, delimTerm) == 0 ){
-                
+            if ( (dataInLen - 1) >= strlen(delimTerm) && strcmp(delimPtr, delimTerm) == 0 ){
                 *dataPtr = dataIn;
-                dataPtr[bytes - strlen(delimTerm)] = 0;
+                dataPtr[dataInLen - strlen(delimTerm) - 1] = 0;
                 return strlen(dataIn) - strlen(delimTerm);
             }
             memset(&buff, 0, 1024);
+			buff[0] = 0;
         }
     }
 }
@@ -476,8 +348,6 @@ int readSocket(int socket, char **dataPtr){
 void clientToServer(conServArgs* args){
 	//func that change struct into toString
 	char* data = readFile(args->dataToSort);
-	free(args->dataToSort);
-	char* colName = args->colName;
 	char* action = args->action;
 	int sd = args->socketDesc;
 	int collecId = args->collecId;
@@ -487,14 +357,16 @@ void clientToServer(conServArgs* args){
 	char* escapedData = toEscStr(data);
 	free(data);
 	
-	char* message = (char*)malloc(strlen(escapedData)+strlen(colName)+strlen(action)+
+	char* message = (char*)malloc(strlen(escapedData)+strlen(tarColName)+strlen(action)+
 		24+strlen("<doc><data></data><colName></colName><action></action></doc><collectionId></collectionId>\r\n")+1);
 	sprintf(message, "<doc><data>%s</data><colName>%s</colName><action>%s</action><collectionId>%d</collectionId></doc>\r\n",
-		escapedData, colName, action, collecId);
+		escapedData, tarColName, action, collecId);
 	free(escapedData);
 
 	int bytes = send(sd, message, strlen(message), 0);
 	free(message);
+
+	printf("Attempting to send csv data to be sorted for file: %s.\n", args->dataToSort);
 
 	char* recMsg = NULL;
 	
@@ -502,10 +374,11 @@ void clientToServer(conServArgs* args){
 	
 	rec = readSocket(sd, &recMsg);
 	if(rec == -1){
-		printf("failed.\n");
+		perror("Failed to read response from server");
+	} else {
+		printf("Read from server: %s\n", recMsg);
 	}
 	close(sd);
-	free(args);
 	
 	int i = 0;
 	char* msgId = NULL;
@@ -521,8 +394,15 @@ void clientToServer(conServArgs* args){
 		i++;
 	}
 	
-	printf("id: %s\n", msgId);
-	getClientId(atoi(msgId));
+	printf("Data sent successfully to server for file: %s. Stored in remote collection with id %s.\n", args->dataToSort, msgId);
+	if (clientId == -1){
+		clientId = atoi(msgId);
+		pthread_mutex_unlock(&id_lock);
+	}
+
 	freeXMLDoc(doc);
+
+	free(args->dataToSort);
+	free(args);
 
 }
