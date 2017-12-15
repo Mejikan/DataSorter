@@ -214,7 +214,6 @@ int recurseDir(recurseDirArgs *dirArgs){
 	
 	int i = 0;
 	while(i < numTid){
-		puts("Thread joined!");
 		pthread_join(tid[i], NULL);
 		i++;
 	}
@@ -377,7 +376,7 @@ void clientToServer(conServArgs* args){
 	if(rec == -1){
 		perror("Failed to read response from server");
 	} else {
-		printf("Read from server: %s\n", recMsg);
+		//printf("Read from server: %s\n", recMsg);
 	}
 	close(sd);
 	
@@ -390,7 +389,7 @@ void clientToServer(conServArgs* args){
 		if(strcasecmp(child->name, "collectionId") == 0){
 			msgId = child->text;
 		} else {
-			printf("%s\n", child->name);
+			//printf("%s\n", child->name);
 		}
 		i++;
 	}

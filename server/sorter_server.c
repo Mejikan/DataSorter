@@ -79,6 +79,17 @@ int findCollection(int id, Node **dest){
     }
 }
 
+char *nowTime(){
+    time_t utc = time(NULL);
+    struct tm *ltime = localtime(&utc);
+
+    char *res = (char*)malloc(32);
+    memset(res, 0, 32);
+    //sprintf(res, "%d %d %d:%d:%d", ltime->tm_mon, ltime->tm_mday, ltime->tm_hour, ltime->tm_min, ltime->tm_sec);
+    strftime(res, 32-1, "%b \%d %H:%M:\%S", ltime);
+    return res;
+}
+
 int readSocket(int socket, char **dataPtr){
     char *delimTerm = "\r\n";
 
@@ -130,6 +141,7 @@ void runClient(ClientArgs *args){
             char *tarColName = NULL;
 
             XMLDoc *doc = fromXmlStr(dataIn);
+            free(dataIn);
             if (doc != NULL && doc->numOfChildren > 0){
                 //puts("converted to xml");
                 int i = 0;
@@ -153,6 +165,7 @@ void runClient(ClientArgs *args){
                     i++;
                 }
             } else {
+                freeXMLDoc(doc);
                 char errMsg[] = "<response><error>Empty request!</error></response>\r\n";
 
                 if (send(socket, errMsg, strlen(errMsg), 0) < 0){
@@ -166,6 +179,7 @@ void runClient(ClientArgs *args){
             }
 
             if (action == DISCONNECT){
+                freeXMLDoc(doc);
                 break;
             } else if (action == SORT && data != NULL){ // ADD data
                 //puts("sorting...");
@@ -197,9 +211,9 @@ void runClient(ClientArgs *args){
                             }
 
                         } else { // find existing collection
-                            puts("finding existing collection");
+                            //puts("finding existing collection");
                             if (findCollection(collectionId, &collection) < 0){
-                                puts("Cannot find requested collection.");
+                                //puts("Cannot find requested collection.");
 
                                 // WRITE TO CLIENT
                                 char payloadStr[strlen("<response><collectionId></collectionId><error>Collection not found!</error></response>\r\n") + 24 + 1];
@@ -248,6 +262,9 @@ void runClient(ClientArgs *args){
                             }
                         }
                     }
+
+                    free(data);
+                    freeXMLDoc(doc);
                 }
             } else if (action == DUMP && tarColName != NULL && collectionId > -1){ // SORT and DUMP
                 Node *collection = NULL;
@@ -271,18 +288,20 @@ void runClient(ClientArgs *args){
                     char *csvHeaderStr = "color,director_name,num_critic_for_reviews,duration,director_facebook_likes,actor_3_facebook_likes,actor_2_name,actor_1_facebook_likes,gross,genres,actor_1_name,movie_title,num_voted_users,cast_total_facebook_likes,actor_3_name,facenumber_in_poster,plot_keywords,movie_imdb_link,num_user_for_reviews,language,country,content_rating,budget,title_year,actor_2_facebook_likes,imdb_score,aspect_ratio,movie_facebook_likes\n";
                     char *fullCsvStr = (char*)malloc(strlen(csvHeaderStr) + strlen(csvStr) + 1);
                     sprintf(fullCsvStr, "%s%s", csvHeaderStr, csvStr);
+                    free(csvStr);
                     char *escapedPayloadData = toEscStr(fullCsvStr);
+                    free(fullCsvStr);
 
                     char *payloadStrMetaFormat = "<response><data></data></response>\r\n";
                     int payloadStrSize = strlen(escapedPayloadData) + strlen(payloadStrMetaFormat) + 1;
 
                     char *payloadStr = (char*)malloc(payloadStrSize);                    
                     sprintf(payloadStr, "<response><data>%s</data></response>\r\n", escapedPayloadData);
+                    free(escapedPayloadData);
                     
                     send(socket, payloadStr, payloadStrSize-1, 0);
                     
                     free(payloadStr);
-                    free(csvStr);
                     pthread_mutex_unlock(&(collection->recsLock));
                 }
             }
@@ -330,7 +349,8 @@ int main(int argc, char **argv){
         printf("Unable to listen on port %d\n", port);
         return -1;
     } else {
-        printf("Server listening on port %d\n", port);
+        //printf("Server listening on port %d\n", port);
+        printf("Received connections from: ");
     }
     fflush(stdout);
 
@@ -358,7 +378,12 @@ int main(int argc, char **argv){
             //printf("Client connected! %d\n", numTid);
             char ipstr[INET_ADDRSTRLEN];
             inet_ntop( AF_INET, &(addr.sin_addr), ipstr, INET_ADDRSTRLEN );
-            printf("IP connected: %s\n", ipstr);
+            //puts("huy");
+            char *timestamp = nowTime();
+            printf("%s [%s], ", ipstr, timestamp);
+            fflush(stdout);
+            free(timestamp);
+            //puts("iop");
 
             ClientArgs *args = (ClientArgs*) malloc(sizeof(ClientArgs));
             args->socket = clientSocket;
